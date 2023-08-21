@@ -1,0 +1,66 @@
+---
+title: "Untitled"
+format: html
+---
+
+Testing ChEMBL webresource client to fetch data.
+
+```{python}
+# Import libraries
+# Fetch data through ChEMBL webresource client
+from chembl_webresource_client.new_client import new_client
+
+# RDKit modules
+from rdkit.Chem import PandasTools
+
+# Dataframe library
+#import numpy as np
+import pandas as pd
+
+# Progress bar
+from tqdm import tqdm
+```
+Referencing "TeachOpenCADD"'s talktorial on compound data acquisition.
+
+Create resource objects to enable API access as suggested.
+
+```{python}
+# Targets
+targets_api = new_client.target
+# Compounds
+cpd_api = new_client.molecule
+# Bioactivities
+bioact_api = new_client.activity
+```
+Check object type
+
+
+```{python}
+type(bioact_api)
+```
+Select a protein target e.g. acetylcholinesterase
+
+
+```{python}
+# Specify Uniprot ID for acetylcholinesterase
+uniprot_id = "P22303"
+# Get info from ChEMBL about this protein target, 
+# with selected features only
+targets = targets_api.get(target_components__accession = uniprot_id).only(
+    "target_chembl_id",
+    "organism", 
+    "pref_name", 
+    "target_type"
+)
+```
+
+The query results are stored in "targets" object (a QuerySet - lazy data evaluation only)
+
+
+```{python}
+# Read "targets" with Pandas
+targets = pd.DataFrame.from_records(targets)
+targets
+```
+
+Select target from this dataframe.
