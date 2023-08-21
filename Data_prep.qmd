@@ -2,6 +2,7 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - Decision tree"
 draft: true
+jupyter: python3
 format: html
 ---
 
