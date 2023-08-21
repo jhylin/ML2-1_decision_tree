@@ -1,7 +1,17 @@
 ---
-title: "Untitled"
+title: "Tree models in ChEMBL data"
+subtitle: "ML series 2.1 - Decision tree"
+draft: true
 format: html
 ---
+
+#### **Introduction**
+
+I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery or cheminformatics. From a few of the papers I've read so far, which were dated in the recent years of 2021 and 2022, it seems that traditional machine learning (ML) methods are still indispensible performance-wise.
+
+Currently, the data preparation will be carried out with heavy reference to the materials and methods section from this paper: van Tilborg, D. *et al*. J. Chem. Inf.Model. 2022, 62, 5938-5951.
+
+#### **Retrieving data**
 
 Testing ChEMBL webresource client to fetch data.
 
@@ -20,7 +30,8 @@ import pandas as pd
 # Progress bar
 from tqdm import tqdm
 ```
-Referencing "TeachOpenCADD"'s talktorial on compound data acquisition.
+
+Reference: TeachOpenCADD talktorial on compound data acquisition.
 
 Create resource objects to enable API access as suggested.
 
@@ -32,18 +43,19 @@ cpd_api = new_client.molecule
 # Bioactivities
 bioact_api = new_client.activity
 ```
-Check object type
 
+Check object type.
 
 ```{python}
 type(bioact_api)
 ```
-Select a protein target e.g. acetylcholinesterase
 
+Select a protein target e.g. acetylcholinesterase.
 
 ```{python}
 # Specify Uniprot ID for acetylcholinesterase
 uniprot_id = "P22303"
+
 # Get info from ChEMBL about this protein target, 
 # with selected features only
 targets = targets_api.get(target_components__accession = uniprot_id).only(
@@ -56,7 +68,6 @@ targets = targets_api.get(target_components__accession = uniprot_id).only(
 
 The query results are stored in "targets" object (a QuerySet - lazy data evaluation only)
 
-
 ```{python}
 # Read "targets" with Pandas
 targets = pd.DataFrame.from_records(targets)
@@ -64,3 +75,10 @@ targets
 ```
 
 Select target from this dataframe.
+
+```{python}
+select_target = targets.iloc[0]
+select_target
+```
+
+Save the selected ChEMBL ID first (to be used later).
