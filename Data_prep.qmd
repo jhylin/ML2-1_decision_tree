@@ -8,13 +8,19 @@ format: html
 
 #### **Introduction**
 
-I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery or cheminformatics. From a few of the papers I've read so far, which were dated in the recent years of 2021 and 2022, it seems that traditional machine learning (ML) methods are still indispensible performance-wise.
+I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during data preparation stage. So this will be what I'll attempt to do this time.
 
-Currently, the data preparation will be carried out with heavy reference to the materials and methods section from this paper: van Tilborg, D. *et al*. J. Chem. Inf.Model. 2022, 62, 5938-5951.
+From a few of the papers I've read so far, which were dated in the recent years of 2021 and 2022, it seems that traditional machine learning (ML) methods are still indispensible performance-wise, and along with deep learning neural networks, they tend to increase prediction accuracy a bit more. I haven't ventured into the practicality and usefulness of large language models in drug discovery or chemistry yet (from what I could gather from experienced seniors in this area, they're still very much too novel to be useful yet, and from what I can imagine, molecular representations in texts or strings probably already created many headaches e.g. standardisations such as whether to use canonical SMILES and/or SELFIES or not, and probably more e.g. issues with chiralities etc.), so I'll be sticking with learning to walk first before trying to jog and run actually.
+
+The data preparation will be carried out with a heavy reference to the materials and methods section from this paper: van Tilborg, D. *et al*. J. Chem. Inf.Model. 2022, 62, 5938-5951. There are probably other methods out there, but this was the paper I've read recently that made sense and relatively easy to follow.
+
+<br>
 
 #### **Retrieving data**
 
-Testing ChEMBL webresource client to fetch data.
+There was a great online resource about fetching data from ChEMBL via using the web resource client - reference: TeachOpenCADD talktorial on [compound data acquisition(https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html)]. The data retrieval workflow being used below was mainly adapted from their talktorial.
+
+Testing ChEMBL webresource client to fetch data. The webresource client was supported by ChEMBL group and based on Django QuerySet interface - their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain more about it.
 
 ```{python}
 # Import libraries
@@ -27,12 +33,11 @@ from rdkit.Chem import PandasTools
 # Dataframe library
 #import numpy as np
 import pandas as pd
+import polars as pl
 
 # Progress bar
 from tqdm import tqdm
 ```
-
-Reference: TeachOpenCADD talktorial on compound data acquisition.
 
 Create resource objects to enable API access as suggested.
 
@@ -78,8 +83,64 @@ targets
 Select target from this dataframe.
 
 ```{python}
+# Save the first protein in the dataframe
 select_target = targets.iloc[0]
 select_target
 ```
 
 Save the selected ChEMBL ID first (to be used later).
+
+```{python}
+chembl_id = select_target.target_chembl_id
+# check it's saved
+print(chembl_id)
+```
+
+Obtaining bioactivity data for the selected target.
+
+```{python}
+bioact = bioact_api.filter(
+    # use the previously saved target ChEMBL ID
+    target_chembl_id = chembl_id, 
+    # bioactivity type
+    type = "IC50",
+    # requesting exact measurements
+    relation = "=",
+    # binding data
+    assay_type = "B"
+).only(
+    "activity_id",
+    "assay_chembl_id",
+    "assay_description",
+    "type",
+    "standard_units",
+    "relation",
+    "standard_value",
+    "target_chembl_id",
+    "target_organism",
+)
+
+# Check the length and type of bioactivities object
+print(len(bioact), type(bioact))
+```
+
+To have a quick look at what sort of data was being held inside each entry of the bioact dataset, e.g. for first entry.
+
+```{python}
+print(len(bioact[0]), type(bioact[0]))
+bioact[0]
+```
+
+The next step might take a few minutes - to download the QuerySet as a Pandas dataframe.
+
+```{python}
+bioact_df = pd.DataFrame.from_dict(bioact)
+
+bioact_df.head()
+```
+
+Check total rows and columns in the bioactivities dataframe.
+
+```{python}
+print(bioact_df.shape)
+```
