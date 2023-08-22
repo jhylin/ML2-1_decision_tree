@@ -8,19 +8,21 @@ format: html
 
 #### **Introduction**
 
-I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during data preparation stage. So this will be what I'll attempt to do this time.
+I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during data preparation stage. So this would be attempted this time.
 
-From a few of the papers I've read so far, which were dated in the recent years of 2021 and 2022, it seems that traditional machine learning (ML) methods are still indispensible performance-wise, and along with deep learning neural networks, they tend to increase prediction accuracy a bit more. I haven't ventured into the practicality and usefulness of large language models in drug discovery or chemistry yet (from what I could gather from experienced seniors in this area, they're still very much too novel to be useful yet, and from what I can imagine, molecular representations in texts or strings probably already created many headaches e.g. standardisations such as whether to use canonical SMILES and/or SELFIES or not, and probably more e.g. issues with chiralities etc.), so I'll be sticking with learning to walk first before trying to jog and run actually.
+From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seemed that traditional machine learning (ML) methods were still indispensible performance-wise, and along with deep learning neural networks, they tend to increase prediction accuracy a bit more. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. From what I could gather from experienced seniors in this area, they were still very much too novel to be useful, and from what I could imagine, molecular representations in texts or strings probably had already created numerous headaches e.g. standardisations regarding to whether to use canonical SMILES and/or SELFIES or not, and probably compound chiralities and so on. Because of this, I'd be sticking with learning to walk first in the conventional ML area before trying to jog and run actually (plans to work on deep learning in the future).
 
-The data preparation will be carried out with a heavy reference to the materials and methods section from this paper: van Tilborg, D. *et al*. J. Chem. Inf.Model. 2022, 62, 5938-5951. There are probably other methods out there, but this was the paper I've read recently that made sense and relatively easy to follow.
+The data preparation was carried out with strong reference to the materials and methods section in this paper: van Tilborg, D. *et al*. J. Chem. Inf.Model. 2022, 62, 5938-5951. There were probably other methods out there, but this was the paper I've read recently that had made sense and relatively easy to follow.
 
 <br>
 
-#### **Retrieving data**
+#### **Data retrieval**
 
-There was a great online resource about fetching data from ChEMBL via using the web resource client - reference: TeachOpenCADD talktorial on [compound data acquisition(https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html)]. The data retrieval workflow being used below was mainly adapted from their talktorial.
+This time I've decided to try something new which was to use the ChEMBL webresource client to get data from the scratch (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way here - reference: TeachOpenCADD talktorial on [compound data acquisition(https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html)]. The data retrieval workflow used below was mainly adapted from this cited talktorial.
 
-Testing ChEMBL webresource client to fetch data. The webresource client was supported by ChEMBL group and based on Django QuerySet interface - their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain more about it.
+The webresource client was supported by ChEMBL group and based on a Django QuerySet interface - their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it.
+
+To do this, a few libraries were needed first.
 
 ```{python}
 # Import libraries
@@ -33,7 +35,6 @@ from rdkit.Chem import PandasTools
 # Dataframe library
 #import numpy as np
 import pandas as pd
-import polars as pl
 
 # Progress bar
 from tqdm import tqdm
@@ -42,21 +43,27 @@ from tqdm import tqdm
 Create resource objects to enable API access as suggested.
 
 ```{python}
-# Targets
+# for targets
 targets_api = new_client.target
-# Compounds
+
+# for compounds
 cpd_api = new_client.molecule
-# Bioactivities
+
+# for bioactivities
 bioact_api = new_client.activity
 ```
 
-Check object type.
+Check object type for one of these API objects (e.g. bioactivity API object).
 
 ```{python}
 type(bioact_api)
 ```
 
-Select a protein target e.g. acetylcholinesterase.
+<br>
+
+##### **Fetching target data**
+
+Select a protein target e.g. acetylcholinesterase (this was randomly chosen).
 
 ```{python}
 # Specify Uniprot ID for acetylcholinesterase
@@ -72,7 +79,7 @@ targets = targets_api.get(target_components__accession = uniprot_id).only(
 )
 ```
 
-The query results are stored in "targets" object (a QuerySet - lazy data evaluation only)
+The query results were stored in a "targets" object, which was a QuerySet with lazy data evaluation only, meaning it would only react when there was a request for the data.
 
 ```{python}
 # Read "targets" with Pandas
@@ -80,7 +87,7 @@ targets = pd.DataFrame.from_records(targets)
 targets
 ```
 
-Select target from this dataframe.
+Select protein target from this dataframe - choosing the first one.
 
 ```{python}
 # Save the first protein in the dataframe
@@ -92,21 +99,25 @@ Save the selected ChEMBL ID first (to be used later).
 
 ```{python}
 chembl_id = select_target.target_chembl_id
-# check it's saved
+# Check it's saved
 print(chembl_id)
 ```
+
+<br>
+
+##### **Fetching bioactivity data**
 
 Obtaining bioactivity data for the selected target.
 
 ```{python}
 bioact = bioact_api.filter(
-    # use the previously saved target ChEMBL ID
+    # Use the previously saved target ChEMBL ID
     target_chembl_id = chembl_id, 
-    # bioactivity type
+    # Bioactivity type
     type = "IC50",
-    # requesting exact measurements
+    # Requesting exact measurements
     relation = "=",
-    # binding data
+    # Binding data as "B"
     assay_type = "B"
 ).only(
     "activity_id",
@@ -124,14 +135,14 @@ bioact = bioact_api.filter(
 print(len(bioact), type(bioact))
 ```
 
-To have a quick look at what sort of data was being held inside each entry of the bioact dataset, e.g. for first entry.
+To have a quick look at the data being held inside each entry of the bioact dataset, e.g. for first entry.
 
 ```{python}
 print(len(bioact[0]), type(bioact[0]))
 bioact[0]
 ```
 
-The next step might take a few minutes - to download the QuerySet as a Pandas dataframe.
+The next step might take a few minutes - downloading the QuerySet as a Pandas dataframe.
 
 ```{python}
 bioact_df = pd.DataFrame.from_dict(bioact)
@@ -144,3 +155,17 @@ Check total rows and columns in the bioactivities dataframe.
 ```{python}
 print(bioact_df.shape)
 ```
+
+<br>
+
+##### **Pre-process bioactivity data**
+
+TODO:
+
+*Dropping "units" & "value" columns (as these were in microM - avoids unit conversion to nanoM, which were already present, named "standard_units" & "standard_value")
+
+*?convert bioact_df to Polars df and check column data types (potentially may be more accurate?)
+
+<br>
+
+##### **Fetching compound data**
