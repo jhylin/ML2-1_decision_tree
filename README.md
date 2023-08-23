@@ -2,7 +2,9 @@
 
 Machine learning (ML) series 2 will be largely about tree models, which encompass decision tree, random forest, XGBoost and LightGBM. I'm planning to have deeper dives into using each of these tree models on drug discovery data from ChEMBL database (as allowed by my current hardware set-ups). This repository will hold most of the data and files used in my current ML series 2.1 working towards building a decision tree model. The final presentation format will be a blog post with URL link to be provided once completed.
 
-#### **ML series 1 - logistic regression**
+---
+
+#### **ML series 1 - Logistic regression**
 
 Rather than placing all the work done for ML series 1 in another repository, I thought I'll leave them below as links (since they were done a while back with a large .csv file downloaded via ChEMBL webpage that I could not fit onto the free GitHub repository, this problem is likely avoided in series 2 when using the ChEMBL webresource client).
 
