@@ -1,6 +1,6 @@
 ---
 title: "Tree models in ChEMBL data"
-subtitle: "ML series 2.1 - Decision tree"
+subtitle: "ML series 2.1 - Decision tree - data pre-processing and preparation"
 draft: true
 jupyter: python3
 format: html
@@ -264,7 +264,7 @@ bioact_df.reset_index(drop = True, inplace = True)
 bioact_df.head()
 ```
 
-One final check on dataframe's number of columns and rows.
+One final check on the number of columns and rows after pre-processing the bioactivity dataframe.
 
 ```{python}
 bioact_df.shape
@@ -275,3 +275,4 @@ There were a total of 11 columns with 5,041 rows of data left in the bioactivity
 <br>
 
 ##### **Fetching compound data**
+
