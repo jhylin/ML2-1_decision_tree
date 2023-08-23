@@ -123,6 +123,8 @@ bioact = bioact_api.filter(
     "activity_id",
     "assay_chembl_id",
     "assay_description",
+    "assay_type",
+    "molecule_chembl_id",
     "type",
     "standard_units",
     "relation",
@@ -179,6 +181,7 @@ bioact_df.dtypes
 ```
 
 ```{python}
+# Small detour test
 # Tried with Polars - standard_value casted as "str", so would still need to convert to floats
 # import polars as pl
 # ba_df = pl.from_pandas(bioact_df)
@@ -209,8 +212,65 @@ bioact_df["standard_units"].unique()
 
 There were a mixture of nM, mM and also picomolars (pM)! 
 
+```{python}
+# Check for number of non-nM units
+bioact_df[bioact_df["standard_units"] != "nM"].shape[0]
+```
 
+There appeared to be 30 non-nM values inside the fetched bioactivity data.
 
+```{python}
+bioact_df = bioact_df[bioact_df["standard_units"] == "nM"]
+```
+
+Then narrow the results to only "nM" and check the dataframe again to see what units were left now.
+
+```{python}
+# Check there were only nM
+bioact_df["standard_units"].unique()
+```
+
+So the filtering worked and currently the number of rows and columns had been reduced.
+
+```{python}
+# Check df rows & columns
+bioact_df.shape
+```
+
+Next part would be to remove all duplicates in the dataframe, especially when there were duplicate tests for the same compound.
+
+```{python}
+bioact_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
+```
+
+Renamed the "standard_value" and "standard_units" columns to be "IC50" and "units" respectively.
+
+```{python}
+bioact_df.rename(
+    columns = {
+        "standard_value": "IC50",
+        "standard_units": "units"
+    }, inplace = True
+)
+
+# Check df to ensure name change
+bioact_df.head()
+```
+
+Lastly, the index of the dataframe was reset.
+
+```{python}
+bioact_df.reset_index(drop = True, inplace = True)
+bioact_df.head()
+```
+
+One final check on dataframe's number of columns and rows.
+
+```{python}
+bioact_df.shape
+```
+
+There were a total of 11 columns with 5,041 rows of data left in the bioactivity dataframe.
 
 <br>
 
