@@ -153,18 +153,64 @@ bioact_df.head()
 Check total rows and columns in the bioactivities dataframe.
 
 ```{python}
-print(bioact_df.shape)
+bioact_df.shape
 ```
 
 <br>
 
 ##### **Pre-process bioactivity data**
 
-TODO:
+To see a variety of units being recorded in the ChEMBL database - would need to be converted to nM. 
 
-*Dropping "units" & "value" columns (as these were in microM - avoids unit conversion to nanoM, which were already present, named "standard_units" & "standard_value")
+```{python}
+bioact_df["units"].unique()
+```
 
-*?convert bioact_df to Polars df and check column data types (potentially may be more accurate?)
+The simplest thing to do was to drop the "units" and "value" columns, which were in micromolar (mM), and to avoid unit conversion to nanomolar (nM), we could use columns such as "standard_units" and "standard_value" which were recorded with nM already.
+
+```{python}
+bioact_df.drop(["units", "value"], axis = 1, inplace = True)
+# Re-check df
+bioact_df.head()
+```
+
+```{python}
+bioact_df.dtypes
+```
+
+```{python}
+# Tried with Polars - standard_value casted as "str", so would still need to convert to floats
+# import polars as pl
+# ba_df = pl.from_pandas(bioact_df)
+# ba_df.head()
+```
+
+Convert the column of "standard_value" from object to floats - so we could use this IC50 values for calculations later.
+
+```{python}
+bioact_df = bioact_df.astype({"standard_value": "float64"})
+# Check column data types again
+bioact_df.dtypes
+```
+
+Taking care of any missing entries by removing them in the first place.
+
+```{python}
+bioact_df.dropna(axis = 0, how = "any", inplace = True)
+# Check number of rows and columns again (in this case, there appeared to be no change)
+bioact_df.shape
+```
+
+Since all unique units inside the "units" and "values" columns were checked previously, I'd done the same for the "standard_units" column to see the ones recorded in it.
+
+```{python}
+bioact_df["standard_units"].unique()
+```
+
+There were a mixture of nM, mM and also picomolars (pM)! 
+
+
+
 
 <br>
 
