@@ -46,11 +46,11 @@ Create resource objects to enable API access as suggested.
 # for targets
 targets_api = new_client.target
 
-# for compounds
-cpd_api = new_client.molecule
-
 # for bioactivities
 bioact_api = new_client.activity
+
+# for compounds
+cpd_api = new_client.molecule
 ```
 
 Check object type for one of these API objects (e.g. bioactivity API object).
@@ -144,7 +144,7 @@ print(len(bioact[0]), type(bioact[0]))
 bioact[0]
 ```
 
-The next step might take a few minutes - downloading the QuerySet as a Pandas dataframe.
+The next step might take a few minutes - downloading the QuerySet as a Pandas DataFrame.
 
 ```{python}
 bioact_df = pd.DataFrame.from_dict(bioact)
@@ -276,3 +276,30 @@ There were a total of 11 columns with 5,041 rows of data left in the bioactivity
 
 ##### **Fetching compound data**
 
+While having identified the protein target and obtained the bioactivity data, this step was to link the bioactivity data to the compounds.
+
+This could be done by having the ChEMBL IDs available for the compounds involved in the bioactivity dataset.
+
+```{python}
+cpds = cpd_api.filter(
+    molecule_chembl_id__in = list(bioact_df["molecule_chembl_id"])
+).only(
+    "molecule_chembl_id",
+    "molecule_structures"
+)
+```
+
+Here, the same step was applied where the compound QuerySet object was converted into a Pandas dataframe. However, the dataset extracted this time could take longer than the time taken to fetch the bioactivity data. This was then monitored using a progress bar (tqdm package).
+
+```{python}
+compds = list(tqdm(cpds))
+```
+
+Converting retrieved compound QuerySet into a Pandas DataFrame.
+
+```{python}
+cpds_df = pd.DataFrame.from_records(compds)
+
+print(cpds_df.shape)
+cpds_df.head()
+```
