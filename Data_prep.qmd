@@ -160,7 +160,7 @@ bioact_df.shape
 
 <br>
 
-##### **Pre-process bioactivity data**
+###### **Pre-process bioactivity data**
 
 To see a variety of units being recorded in the ChEMBL database - would need to be converted to nM. 
 
@@ -303,3 +303,84 @@ cpds_df = pd.DataFrame.from_records(compds)
 print(cpds_df.shape)
 cpds_df.head()
 ```
+
+<br>
+
+###### **Pre-process compound data**
+
+Removing any missing entries in the compound data.
+
+
+```{python}
+cpds_df.dropna(axis = 0, how = "any", inplace = True)
+
+# Check columns & rows in df
+cpds_df.shape
+```
+
+Removing any duplicates in the compound data.
+
+
+```{python}
+cpds_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
+
+# Check columns & rows again
+cpds_df.shape
+```
+
+Ideally, only the compounds with canonical SMILES would be kept. Checking for the types of molecular representations used in the "molecule_structures" column of the compound dataset.
+
+```{python}
+# Randomly choosing the 2nd entry
+cpds_df.iloc[1].molecule_structures.keys()
+```
+
+There were 4 types as: "canonical_smiles", "molfile", "standard_inchi" and "standard_inchi_key".
+
+
+```{python}
+# Create an empty list to store the canonical smiles
+can_smiles = []
+
+# Create a for loop to loop over each row of data, 
+# searching for only canonical_smiles to append to the created list
+for i, cpd in cpds_df.iterrows():
+    try:
+        can_smiles.append(cpd["molecule_structures"]["canonical_smiles"])
+    except KeyError:
+        can_smiles.append(None)
+
+# Create a new df column with name as "smiles", 
+# which will store all the canonical smiles collected from the list above
+cpds_df["smiles"] = can_smiles
+```
+
+Check the compound dataframe quickly to see if a new column for SMILES has been created.
+
+```{python}
+cpds_df.head()
+```
+
+Once confirmed, the old "molecule_structures" column was then removed.
+
+```{python}
+cpds_df.drop("molecule_structures", axis = 1, inplace = True)
+```
+
+Finally, adding another step to ensure all missing entries or entries without canonical SMILES strings were removed from the compound dataset.
+
+```{python}
+cpds_df.dropna(axis = 0, how = "any", inplace = True)
+
+print(cpds_df.shape)
+```
+
+Final look at the compound dataset, which should only include compounds ChEMBL IDs and SMILES columns.
+
+```{python}
+cpds_df.head()
+```
+
+<br>
+
+##### **Combining bioactivity and compound data**
