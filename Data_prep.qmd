@@ -188,7 +188,7 @@ bioact_df.dtypes
 # ba_df.head()
 ```
 
-Convert the column of "standard_value" from object to floats - so we could use this IC50 values for calculations later.
+Convert the column of "standard_value" from object to floats - so we could use this half maximal inhibitory concentration (IC50) values for calculations later.
 
 ```{python}
 bioact_df = bioact_df.astype({"standard_value": "float64"})
@@ -429,6 +429,10 @@ dtree_df.to_csv("ache_chembl.csv")
 **Following section still work-in-progress**
 
 The other thing to do was to convert the IC50 values to pIC50 values (the negative log of IC50 in molar units).
+
+The key to understand this was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert from IC50 to pIC50 for nM units was:
+
+pIC50 = 9 - log10(IC50)
 
 Import the math library and set up a small function to do the conversion.
 
