@@ -426,44 +426,68 @@ Saving a copy of the merged dataframe for now (to avoid re-running the previous 
 dtree_df.to_csv("ache_chembl.csv")
 ```
 
-**Following section still work-in-progress**
+##### **Re-import saved dataframe**
 
-The other thing to do was to convert the IC50 values to pIC50 values (the negative log of IC50 in molar units).
-
-The key to understand this was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert from IC50 to pIC50 for nM units was:
-
-pIC50 = 9 - log10(IC50)
-
-Import the math library and set up a small function to do the conversion.
+Re-import partly pre-processed dtree_df.
 
 ```{python}
-import math
-
-# Won't work yet - draft function only
-def calc_pIC50(IC50):
-    pIC50_value = 9 - math.log10(IC50)
-    return pIC50_value
+dtree_df = pd.read_csv("ache_chembl.csv")
+dtree_df.head()
 ```
 
-Applying the calc_pIC50 function to convert all rows of the compound dataset.
+Noticed there was an extra index column, likely inherited from how the .csv file was saved, which was subsequently removed.
 
 ```{python}
-# Create a new column for pIC50
-
-# dtree_df["pIC50"] = dtree_df.apply(lambda x: calc_pIC50(x.IC50), axis = 1)
+dtree_df = dtree_df.drop("Unnamed: 0", axis = 1)
+dtree_df.head()
 ```
 
-```{python}
-#dtree_df.head()
-
-# Check for the lowest IC50 values in df
-dtree_df["IC50"].min()
-```
+The merged dataframe was found to have IC50 with zero nM, which meant the function to convert IC50 to pIC50 would not proceed (due to natural log of zero normally means undefined answer!). So a good practice to clean data like this was probably best to run a statistical summary such as the code below first, then look for minimum and maximum values and also others to see if there were anything to be tidied up first.
 
 ```{python}
 dtree_df.describe()
 ```
 
-Appears there are IC50 with 0 (or less than 1), which means the function to convert IC50 to pIC50 may produce odd negative numbers for less than 1 IC50 values, for zeros, this would produce an error message in math library.
+Limiting the IC50 values to be above zero only.
 
-**Need to drop row entries where IC50 were zero nM**
+```{python}
+# Select IC50 values above zero
+dtree_df = dtree_df[dtree_df["IC50"] > 0.0]
+```
+
+Re-checked the minimum value of IC50 column, which should be above zero.
+
+```{python}
+dtree_df["IC50"].min()
+```
+
+Now we could convert the IC50 values to pIC50 values (the negative log of IC50 in molar units).
+
+The key to understand pIC50 here was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert IC50 to pIC50 for nM units was:
+
+pIC50 = 9 - log10(IC50)
+
+Import the math library first and set up a small function to do the conversion.
+
+```{python}
+import math
+
+def calc_pIC50(IC50):
+    pIC50_value = 9 - math.log10(IC50)
+    return pIC50_value
+```
+
+Applying the calc_pIC50 function to convert all rows of the compound dataset for the IC50 column.
+
+```{python}
+# Create a new column for pIC50
+# Apply calc_pIC50 function to the data in IC50 column
+dtree_df["pIC50"] = dtree_df.apply(lambda x: calc_pIC50(x.IC50), axis = 1)
+```
+
+The dataframe would now look like this, with a new pIC50 column ready for use.
+
+```{python}
+dtree_df.head()
+```
+
