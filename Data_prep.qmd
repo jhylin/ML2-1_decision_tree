@@ -426,6 +426,8 @@ Saving a copy of the merged dataframe for now (to avoid re-running the previous 
 dtree_df.to_csv("ache_chembl.csv")
 ```
 
+<br>
+
 ##### **Re-import saved dataframe**
 
 Re-import partly pre-processed dtree_df.
@@ -490,4 +492,13 @@ The dataframe would now look like this, with a new pIC50 column ready for use.
 ```{python}
 dtree_df.head()
 ```
+
+However, for a decision tree model, a few more molecular descriptors were probably needed rather than only IC50 or pIC50 and SMILES... One way to do this could be through computations based on canonical SMILES of compounds by using RDKit to add some molecular descriptors.
+
+Before doing this, a compound sanitisation step would probably be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or I guess Datamol (a Python wrapper library built based on RDKit) might also help as well.
+
+<br>
+
+##### **Compound sanitisation**
+
 
