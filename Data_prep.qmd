@@ -30,7 +30,7 @@ To do this, a few libraries were needed first.
 from chembl_webresource_client.new_client import new_client
 
 # RDKit modules
-from rdkit.Chem import PandasTools
+#from rdkit.Chem import PandasTools
 
 # Dataframe library
 #import numpy as np
@@ -121,6 +121,7 @@ bioact = bioact_api.filter(
     assay_type = "B"
 ).only(
     "activity_id",
+    "data_validity_comment"
     "assay_chembl_id",
     "assay_description",
     "assay_type",
@@ -196,10 +197,10 @@ bioact_df = bioact_df.astype({"standard_value": "float64"})
 bioact_df.dtypes
 ```
 
-Taking care of any missing entries by removing them in the first place.
+Taking care of any missing entries by removing them in the first place. I excluded "data_validity_comment" column in this exercise as this was required to check if there were any activity data of the compounds that were deemed to be not as valid e.g. excessively high IC50 value and so on. A lot of the compounds in this column probably had "None", which ensured that there were no particular alarm bells to the curated bioactivity data.
 
 ```{python}
-bioact_df.dropna(axis = 0, how = "any", inplace = True)
+bioact_df.dropna(subset = ["activity_id", "assay_chembl_id", "assay_description", "assay_type", "molecule_chembl_id", "relation", "standard_units", "standard_value", "target_chembl_id", "target_organism", "type"], axis = 0, how = "any", inplace = True)
 # Check number of rows and columns again (in this case, there appeared to be no change)
 bioact_df.shape
 ```
@@ -310,7 +311,6 @@ cpds_df.head()
 
 Removing any missing entries in the compound data.
 
-
 ```{python}
 cpds_df.dropna(axis = 0, how = "any", inplace = True)
 
@@ -404,7 +404,7 @@ The next step was to combine or merge both datasets.
 ```{python}
 # Create a final dataframe that will contain both bioactivity and compound data
 dtree_df = pd.merge(
-    bioact_df[["molecule_chembl_id", "IC50", "units"]],
+    bioact_df[["molecule_chembl_id", "IC50", "units", "data_validity_comment"]],
     cpds_df,
     on = "molecule_chembl_id",
 )
@@ -497,9 +497,62 @@ However, for a decision tree model, a few more molecular descriptors were probab
 
 Before doing this, a compound sanitisation step would probably be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or I guess Datamol (a Python wrapper library built based on RDKit) might also help as well.
 
+```{python}
+#df['column'].astype('string') 
+dtree_df = dtree_df.astype({"smiles": "string", "data_validity_comment": "string"})
+dtree_df.dtypes
+```
+
+Before I jumped straight to compound sanitisation, I thought I should check out if there were any variations in the "data_validity_comment" column.
+
+```{python}
+dtree_df["data_validity_comment"].unique()
+```
+
+Interestingly, there were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant we would need to address compounds with comments in the latter two and potentially leaving the ones with "NaN" alone.
+
+```{python}
+# Find out compounds with "outside typical range" as data validity comment
+dtree_df_filter1 = dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"]
+dtree_df_filter1
+```
+
+There were a total of 328 compounds with IC50 outside typical range!
+
+```{python}
+dtree_df_filter2 = dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
+dtree_df_filter2
+```
+
+There were 8 compounds with potential transcription errors for their respective IC50 values!
+
+This meant it would be the best to remove the above compounds with questionable IC50 values.
+
+```{python}
+# Fill "NaN" entries with an actual name e.g. zero
+dtree_df = dtree_df.fillna("zero")
+dtree_df.head(10)
+```
+
+Filtered out only the compounds with nil data validity comments.
+
+```{python}
+#dtree_df["data_validity_comment"].unique()
+dtree_df = dtree_df[dtree_df["data_validity_comment"] == "zero"]
+```
+
+Checking the dtree_df dataframe again and also whether if only the compounds with zero labelled "data_validity_comment" were kept (and other two types were removed).
+
+```{python}
+print(dtree_df.shape)
+dtree_df["data_validity_comment"].unique()
+```
+
 <br>
 
 ##### **Compound sanitisation**
+
+**Sections below needed to be re-run as only just checked and cleaned data for "data_validity_comment" column just now**
 
 I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) provided by Datamol and its reference links provided at the bottom of the webpage to be very informative. 
 
@@ -517,8 +570,8 @@ def _preprocess(row):
     mol = dm.to_mol(row[smiles_column], ordered=True)
     # Fix common errors in the molecules
     mol = dm.fix_mol(mol)
-    # Sanitise the molecules - switched on charge neutralisation 
-    mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=True)
+    # Sanitise the molecules 
+    mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=False)
     # Standardise the molecules - used default setting
     mol = dm.standardize_mol(
         mol,
@@ -529,6 +582,8 @@ def _preprocess(row):
         stereo=True,
     )
 
+    # Added a new column for RDKit molecules
+    row["rdkit_mol"] = dm.to_mol(mol)
     row["standard_smiles"] = dm.standardize_smiles(dm.to_smiles(mol))
     row["selfies"] = dm.to_selfies(mol)
     row["inchi"] = dm.to_inchi(mol)
@@ -536,7 +591,7 @@ def _preprocess(row):
     return row
 ```
 
-Then the compound sanitisation function was applied to the dtree_df.
+Then the compound sanitisation function was applied to the dtree_df. 
 
 ```{python}
 # Not working yet
@@ -544,28 +599,29 @@ dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
 dtree_san_df.head()
 ```
 
+Please note if the dataset required for sanitisation is large, Datamol suggested using their example code to add parallelisation as shown below.
+
+```{{python}}
+# Code adapted from: https://docs.datamol.io/stable/tutorials/Preprocessing.html#references
+data_clean = dm.parallelized(
+    _preprocess, 
+    data.iterrows(), 
+    arg_type="args", 
+    progress=True, 
+    total=len(data)
+    )
+data_clean = pd.DataFrame(data_clean)
+```
+In this case, I tried using without adding the parallelisation code, the whole sanitisation process wasn't overly long, and was done within a minute or so (the dtree_df dataframe had 5,039 rows or compounds only).
+
 ```{python}
-dtree_df.dtypes
-# smiles as "objects" - to convert
+dtree_san_df.shape
 ```
 
-```{python}
-import polars as pl
-```
 
 ```{python}
-dtree_pl_df = pl.from_pandas(dtree_df)
-dtree_pl_df
-```
+# Check what data were available from chembl_webresource_client
 
-```{python}
-dtree_pl_df.filter(pl.col("smiles") == "")
-# Nil empty smiles
-
-# df = df.with_columns([
-#     pl.when(pl.col("Smiles").str.lengths() == 0)
-#     .then(pl.lit("C1C(C(C(C(C1N)OC2C(C(C(C(O2)CN)O)O)N)OC3C(C(C(O3)CO)OC4C(C(C(C(O4)CN)O)O)N)O)O)N"))
-#     .otherwise(pl.col("Smiles"))
-#     .keep_name()
-# ])
+# available_resources = [resource for resource in dir(new_client) if not resource.startswith('_')]
+# print(available_resources)
 ```
