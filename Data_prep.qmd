@@ -501,4 +501,71 @@ Before doing this, a compound sanitisation step would probably be the best befor
 
 ##### **Compound sanitisation**
 
+I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) provided by Datamol and its reference links provided at the bottom of the webpage to be very informative. 
 
+```{python}
+import datamol as dm
+
+# _preprocess function to sanitise compounds - adapted from datamol.io
+
+smiles_column = "smiles"
+
+dm.disable_rdkit_log()
+
+def _preprocess(row):
+    # Convert each compound to a RDKit molecule in the smiles column
+    mol = dm.to_mol(row[smiles_column], ordered=True)
+    # Fix common errors in the molecules
+    mol = dm.fix_mol(mol)
+    # Sanitise the molecules - switched on charge neutralisation 
+    mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=True)
+    # Standardise the molecules - used default setting
+    mol = dm.standardize_mol(
+        mol,
+        disconnect_metals=False,
+        normalize=True,
+        reionize=True,
+        uncharge=False,
+        stereo=True,
+    )
+
+    row["standard_smiles"] = dm.standardize_smiles(dm.to_smiles(mol))
+    row["selfies"] = dm.to_selfies(mol)
+    row["inchi"] = dm.to_inchi(mol)
+    row["inchikey"] = dm.to_inchikey(mol)
+    return row
+```
+
+Then the compound sanitisation function was applied to the dtree_df.
+
+```{python}
+# Not working yet
+dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
+dtree_san_df.head()
+```
+
+```{python}
+dtree_df.dtypes
+# smiles as "objects" - to convert
+```
+
+```{python}
+import polars as pl
+```
+
+```{python}
+dtree_pl_df = pl.from_pandas(dtree_df)
+dtree_pl_df
+```
+
+```{python}
+dtree_pl_df.filter(pl.col("smiles") == "")
+# Nil empty smiles
+
+# df = df.with_columns([
+#     pl.when(pl.col("Smiles").str.lengths() == 0)
+#     .then(pl.lit("C1C(C(C(C(C1N)OC2C(C(C(C(O2)CN)O)O)N)OC3C(C(C(O3)CO)OC4C(C(C(C(O4)CN)O)O)N)O)O)N"))
+#     .otherwise(pl.col("Smiles"))
+#     .keep_name()
+# ])
+```
