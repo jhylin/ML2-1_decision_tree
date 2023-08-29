@@ -20,7 +20,7 @@ The data preparation was carried out with strong reference to the materials and 
 
 This time I've decided to try something new which was to use the ChEMBL webresource client to get data from the scratch (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way here - reference: TeachOpenCADD talktorial on [compound data acquisition(https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html)]. The data retrieval workflow used below was mainly adapted from this cited talktorial.
 
-The webresource client was supported by ChEMBL group and based on a Django QuerySet interface - their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it.
+The webresource client was supported by ChEMBL group and based on a Django QuerySet interface - their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it, particularly the Jupyter notebook provided in the repository would help a lot for how to write code to search for specific data.
 
 To do this, a few libraries were needed first.
 
@@ -40,10 +40,17 @@ import pandas as pd
 from tqdm import tqdm
 ```
 
+To see what types of data were provided by ChEMBL webresource client, run the following code and refer to ChEMBL documentations to find out what data were embedded inside which data categories. Sometimes, it might not be that straight forward and some digging would be required (I went back to this step to find the "data_validity_comment" when I got to the compound sanitisation step actually).
+
+```{python}
+available_resources = [resource for resource in dir(new_client) if not resource.startswith('_')]
+print(available_resources)
+```
+
 Create resource objects to enable API access as suggested.
 
 ```{python}
-# for targets
+# for targets (proteins)
 targets_api = new_client.target
 
 # for bioactivities
@@ -465,7 +472,7 @@ dtree_df["IC50"].min()
 
 Now we could convert the IC50 values to pIC50 values (the negative log of IC50 in molar units).
 
-The key to understand pIC50 here was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert IC50 to pIC50 for nM units was:
+The key to understand pIC50 here was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert IC50 to pIC50 for nM units was (**use LaTex for formula**):
 
 pIC50 = 9 - log10(IC50)
 
@@ -509,24 +516,23 @@ Before I jumped straight to compound sanitisation, I thought I should check out 
 dtree_df["data_validity_comment"].unique()
 ```
 
-Interestingly, there were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant we would need to address compounds with comments in the latter two and potentially leaving the ones with "NaN" alone.
+Interestingly, there were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant we would need to address compounds with comments in the latter two.
 
 ```{python}
-# Find out compounds with "outside typical range" as data validity comment
-dtree_df_filter1 = dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"]
-dtree_df_filter1
+# Find out number of compounds with "outside typical range" as data validity comment
+dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"]
 ```
 
 There were a total of 328 compounds with IC50 outside typical range!
 
 ```{python}
-dtree_df_filter2 = dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
-dtree_df_filter2
+# Find out number of compounds with "potential transcription error" as data validity comment
+dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
 ```
 
 There were 8 compounds with potential transcription errors for their respective IC50 values!
 
-This meant it would be the best to remove the above compounds with questionable IC50 values.
+This meant it would be best to remove above compounds with questionable IC50 values (could be potential sources of errors for ML models later on). One of the ways I thought of doing was to fill the empty cells under "data_validity_comment" column, so this would be easier to filter.
 
 ```{python}
 # Fill "NaN" entries with an actual name e.g. zero
@@ -541,7 +547,7 @@ Filtered out only the compounds with nil data validity comments.
 dtree_df = dtree_df[dtree_df["data_validity_comment"] == "zero"]
 ```
 
-Checking the dtree_df dataframe again and also whether if only the compounds with zero labelled "data_validity_comment" were kept (and other two types were removed).
+Checking the dtree_df dataframe again and also whether if only the compounds with "zero" labelled for "data_validity_comment" column were kept (and other two types were removed).
 
 ```{python}
 print(dtree_df.shape)
@@ -552,9 +558,7 @@ dtree_df["data_validity_comment"].unique()
 
 ##### **Compound sanitisation**
 
-**Sections below needed to be re-run as only just checked and cleaned data for "data_validity_comment" column just now**
-
-I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) provided by Datamol and its reference links provided at the bottom of the webpage to be very informative. 
+I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided provided by Datamol at the bottom of the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select preprocessing options required to fit the purpose of the ML model being built later on, and experiences would also help to improve the compound preprocessing step.
 
 ```{python}
 import datamol as dm
@@ -572,17 +576,18 @@ def _preprocess(row):
     mol = dm.fix_mol(mol)
     # Sanitise the molecules 
     mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=False)
-    # Standardise the molecules - used default setting
+    # Standardise the molecules
     mol = dm.standardize_mol(
         mol,
         disconnect_metals=False,
         normalize=True,
         reionize=True,
-        uncharge=False,
+        # Decided to switch on "uncharge" to neutralise charges - the only change
+        uncharge=True,
         stereo=True,
     )
 
-    # Added a new column for RDKit molecules
+    # Added a new column below for RDKit molecules
     row["rdkit_mol"] = dm.to_mol(mol)
     row["standard_smiles"] = dm.standardize_smiles(dm.to_smiles(mol))
     row["selfies"] = dm.to_selfies(mol)
@@ -599,7 +604,7 @@ dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
 dtree_san_df.head()
 ```
 
-Please note if the dataset required for sanitisation is large, Datamol suggested using their example code to add parallelisation as shown below.
+Please note if the dataset required for sanitisation is large, Datamol has suggested using their example code to add parallelisation as shown below.
 
 ```{{python}}
 # Code adapted from: https://docs.datamol.io/stable/tutorials/Preprocessing.html#references
@@ -612,16 +617,16 @@ data_clean = dm.parallelized(
     )
 data_clean = pd.DataFrame(data_clean)
 ```
-In this case, I tried using without adding the parallelisation code, the whole sanitisation process wasn't overly long, and was done within a minute or so (the dtree_df dataframe had 5,039 rows or compounds only).
 
 ```{python}
 dtree_san_df.shape
 ```
 
+In this case, I tried using the preprocessing function without adding the parallelisation, the whole sanitisation process wasn't overly long, and was done within a minute or so (the dtree_df dataframe had 4,703 rows or compounds only).
 
-```{python}
-# Check what data were available from chembl_webresource_client
+<br>
 
-# available_resources = [resource for resource in dir(new_client) if not resource.startswith('_')]
-# print(available_resources)
-```
+###### **Detect outliers**
+
+Dixon's Q test or graph plots
+

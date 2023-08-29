@@ -4,3 +4,4 @@
 /py3.9venv
 .DS_Store
 Data_prep_polars.qmd
+/.luarc.json
