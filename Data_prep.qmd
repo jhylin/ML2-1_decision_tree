@@ -556,7 +556,7 @@ dtree_df["data_validity_comment"].unique()
 
 <br>
 
-##### **Compound sanitisation**
+#### **Compound sanitisation**
 
 I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided provided by Datamol at the bottom of the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select preprocessing options required to fit the purpose of the ML model being built later on, and experiences would also help to improve the compound preprocessing step.
 
@@ -599,7 +599,6 @@ def _preprocess(row):
 Then the compound sanitisation function was applied to the dtree_df. 
 
 ```{python}
-# Not working yet
 dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
 dtree_san_df.head()
 ```
@@ -626,7 +625,31 @@ In this case, I tried using the preprocessing function without adding the parall
 
 <br>
 
-###### **Detect outliers**
+#### **Detect outliers**
 
-Dixon's Q test or graph plots
+Plotting a histogram to see the distribution of pIC50 values first.
 
+```{python}
+dtree_san_df.hist(column = "pIC50")
+```
+
+I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were: 
+
+- normally distributed data 
+- a small sample size i.e. e.g. between 3 and 10 (as originally stated in the paper published by R. B. Dean and W. J. Dixon (1951) Simplified Statistics for Small Numbers of Observations”. Anal. Chem., 1951, 23 (4), 636–638).
+
+So I've decided that rather than showing Python code for Dixon's Q test myself, I'd attach a few examples from others instead, [Q test from Plotly](https://plotly.com/python/v3/outlier-test/) and also [Dixon's Q test for outlier identification – a questionable practice](https://sebastianraschka.com/Articles/2014_dixon_test.html), since this dataset here wasn't quite normally distributed as shown from the histogram plotted above. 
+
+```{python}
+dtree_san_df.boxplot(column = "pIC50")
+
+# the boxplot version below shows a blank background
+# rather than above version with horizontal grid lines
+#dtree_san_df.plot.box(column = "pIC50")
+```
+
+So I used Pandas' built-in boxplot in addition to the histogram to show the likely outliers within the pIC50 values. Clearly, the possible outliers for pIC50 values appeared to be close to 10 and above. I've then decided not to completely remove these outliers due to the dataset itself not in a Gaussian distribution (as they might not be true outliers).
+
+<br>
+
+#### **Molecular descriptors**
