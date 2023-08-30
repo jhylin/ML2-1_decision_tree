@@ -1,0 +1,235 @@
+---
+title: "Tree models in ChEMBL data"
+subtitle: "ML series 2.1 - Decision tree - Data pre-processing 2 of 2"
+draft: true
+jupyter: python3
+format: html
+---
+
+Since data preparation and cleaning was a well-known process that would take up a lot of time, I've decided to split this part into two posts to ensure the reading time for each post was reasonable.
+
+```{python}
+# Import all libraries used
+import pandas as pd
+import math
+import datamol as dm
+```
+
+<br>
+
+##### **Re-import saved dataframe**
+
+Re-imported the partly pre-processed dtree_df from the earlier post.
+
+```{python}
+dtree_df = pd.read_csv("ache_chembl.csv")
+dtree_df.head()
+```
+
+Noticed there was an extra index column, likely inherited from how the .csv file was saved, which was subsequently removed.
+
+```{python}
+dtree_df = dtree_df.drop("Unnamed: 0", axis = 1)
+dtree_df.head()
+```
+
+The merged dataframe was found to have IC50 with zero nM, which meant the function to convert IC50 to pIC50 would not proceed (due to natural log of zero normally means undefined answer!). So a good practice to clean data like this was probably best to run a statistical summary such as the code below first, then look for minimum and maximum values and also others to see if there were anything to be tidied up first.
+
+```{python}
+dtree_df.describe()
+```
+
+Limiting the IC50 values to be above zero only.
+
+```{python}
+# Select IC50 values above zero
+dtree_df = dtree_df[dtree_df["IC50"] > 0.0]
+```
+
+Re-checked the minimum value of IC50 column, which should be above zero.
+
+```{python}
+dtree_df["IC50"].min()
+```
+
+Now we could convert the IC50 values to pIC50 values (the negative log of IC50 in molar units).
+
+The key to understand pIC50 here was to treat pIC50 similarly to how we understand pH for our acids and bases. pIC50 was a dimensionless value (so no units actually!) - *useful link*. The formula to convert IC50 to pIC50 for nM units was (**use LaTex for formula**):
+
+pIC50 = 9 - log10(IC50)
+
+Set up a small function to do the conversion.
+
+```{python}
+def calc_pIC50(IC50):
+    pIC50_value = 9 - math.log10(IC50)
+    return pIC50_value
+```
+
+Applying the calc_pIC50 function to convert all rows of the compound dataset for the IC50 column.
+
+```{python}
+# Create a new column for pIC50
+# Apply calc_pIC50 function to the data in IC50 column
+dtree_df["pIC50"] = dtree_df.apply(lambda x: calc_pIC50(x.IC50), axis = 1)
+```
+
+The dataframe would now look like this, with a new pIC50 column ready for use.
+
+```{python}
+dtree_df.head()
+```
+
+However, for a decision tree model, a few more molecular descriptors were probably needed rather than only IC50 or pIC50 and SMILES... One way to do this could be through computations based on canonical SMILES of compounds by using RDKit to add some molecular descriptors.
+
+Before doing this, a compound sanitisation step would probably be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or I guess Datamol (a Python wrapper library built based on RDKit) might also help as well.
+
+I thought to convert the data types of the "smiles" and "data_validity_comment" columns to string first (in case of running into problems later).
+
+```{python}
+#df['column'].astype('string') 
+dtree_df = dtree_df.astype({"smiles": "string", "data_validity_comment": "string"})
+dtree_df.dtypes
+```
+
+Also, before I jumped straight to compound sanitisation, I thought I should check out if there were any comments in the "data_validity_comment" column.
+
+```{python}
+dtree_df["data_validity_comment"].unique()
+```
+
+Interestingly, there were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant we would need to address compounds with comments in the latter two.
+
+```{python}
+# Find out number of compounds with "outside typical range" as data validity comment
+dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"]
+```
+
+There were a total of 328 compounds with IC50 outside typical range!
+
+```{python}
+# Find out number of compounds with "potential transcription error" as data validity comment
+dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
+```
+
+There were 8 compounds with potential transcription errors for their respective IC50 values!
+
+This meant it would be best to remove above compounds with questionable IC50 values (could be potential sources of errors for ML models later on). One of the ways I thought of doing was to fill the empty cells under "data_validity_comment" column, so this would be easier to filter.
+
+```{python}
+# Fill "NaN" entries with an actual name e.g. zero
+dtree_df = dtree_df.fillna("zero")
+dtree_df.head(10)
+```
+
+Filtered out only the compounds with nil data validity comments.
+
+```{python}
+#dtree_df["data_validity_comment"].unique()
+dtree_df = dtree_df[dtree_df["data_validity_comment"] == "zero"]
+```
+
+Checking the dtree_df dataframe again and also whether if only the compounds with "zero" labelled for "data_validity_comment" column were kept (and other two types were removed).
+
+```{python}
+print(dtree_df.shape)
+dtree_df["data_validity_comment"].unique()
+```
+
+<br>
+
+#### **Compound sanitisation**
+
+I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided by Datamol at the bottom of the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select pre-processing options required to fit the purpose of the ML models being built later on, and more experiences in doing this would also help to improve the compound pre-processing step.
+
+```{python}
+# _preprocess function to sanitise compounds - adapted from datamol.io
+
+smiles_column = "smiles"
+
+dm.disable_rdkit_log()
+
+def _preprocess(row):
+    # Convert each compound to a RDKit molecule in the smiles column
+    mol = dm.to_mol(row[smiles_column], ordered=True)
+    # Fix common errors in the molecules
+    mol = dm.fix_mol(mol)
+    # Sanitise the molecules 
+    mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=False)
+    # Standardise the molecules
+    mol = dm.standardize_mol(
+        mol,
+        disconnect_metals=False,
+        normalize=True,
+        reionize=True,
+        # Decided to switch on "uncharge" to neutralise charges - the only change
+        uncharge=True,
+        stereo=True,
+    )
+
+    # Added a new column below for RDKit molecules
+    row["rdkit_mol"] = dm.to_mol(mol)
+    row["standard_smiles"] = dm.standardize_smiles(dm.to_smiles(mol))
+    row["selfies"] = dm.to_selfies(mol)
+    row["inchi"] = dm.to_inchi(mol)
+    row["inchikey"] = dm.to_inchikey(mol)
+    return row
+```
+
+Then the compound sanitisation function was applied to the dtree_df. 
+
+```{python}
+dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
+dtree_san_df.head()
+```
+
+Please note if the dataset required for sanitisation is large, Datamol has suggested using their example code to add parallelisation as shown below.
+
+```{{python}}
+# Code adapted from: https://docs.datamol.io/stable/tutorials/Preprocessing.html#references
+data_clean = dm.parallelized(
+    _preprocess, 
+    data.iterrows(), 
+    arg_type="args", 
+    progress=True, 
+    total=len(data)
+    )
+data_clean = pd.DataFrame(data_clean)
+```
+
+```{python}
+dtree_san_df.shape
+```
+
+In this case, I tried using the preprocessing function without adding the parallelisation, the whole sanitisation process wasn't overly long, and was done within a minute or so (the dtree_df dataframe had 4,703 rows or compounds only).
+
+<br>
+
+#### **Detect outliers**
+
+Plotting a histogram to see the distribution of pIC50 values first.
+
+```{python}
+dtree_san_df.hist(column = "pIC50")
+```
+
+I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were: 
+
+- normally distributed data 
+- a small sample size e.g. between 3 and 10 (as originally stated in the paper published by R. B. Dean and W. J. Dixon (1951) Simplified Statistics for Small Numbers of Observations”. Anal. Chem., 1951, 23 (4), 636–638).
+
+So I've decided that rather than showing Python code for Dixon's Q test myself, I'd attach a few examples from others instead, [Q test from Plotly](https://plotly.com/python/v3/outlier-test/) and also [Dixon's Q test for outlier identification – a questionable practice](https://sebastianraschka.com/Articles/2014_dixon_test.html), since this dataset here wasn't quite normally distributed as shown from the histogram plotted above. 
+
+```{python}
+dtree_san_df.boxplot(column = "pIC50")
+
+# the boxplot version below shows a blank background
+# rather than above version with horizontal grid lines
+#dtree_san_df.plot.box(column = "pIC50")
+```
+
+So I used Pandas' built-in boxplot in addition to the histogram to show the likely outliers within the pIC50 values. Clearly, the possible outliers for pIC50 values appeared to be close to 10 and above. I've then decided not to completely remove these outliers due to the dataset itself being not in a Gaussian distribution (which meant they might not be true outliers).
+
+<br>
+
+#### **Molecular descriptors**

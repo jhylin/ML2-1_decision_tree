@@ -1,0 +1,436 @@
+---
+title: "Tree models in ChEMBL data"
+subtitle: "ML series 2.1 - Decision tree - Data pre-processing 1 of 2"
+draft: true
+jupyter: python3
+format: html
+---
+
+#### **Introduction**
+
+I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during the data preparation stage. So this would be attempted this time.
+
+From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seemed that traditional machine learning (ML) methods were still indispensible performance-wise, and when used in combination with deep learning neural networks, they tend to increase prediction accuracy more. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. However, from the comments from experienced seniors in this area, they were still very much novel and hence not as useful yet, and from what I could imagine, molecular representations in texts or strings probably had already created many headaches e.g. molecular standardisations regarding to whether to use canonical SMILES and/or SELFIES or not, and other areas such as chiralities and aromaticities and so on. Because of this, I'd be sticking with learning to walk first in the conventional ML area before trying to run in other more in-depth areas (more likely to happen in the future).
+
+The data preparation used here was carried out with strong reference to the materials and methods section in this paper: van Tilborg, D. *et al*. J. Chem. Inf. Model. 2022, 62, 5938-5951. There were probably other methods out there, but this was the paper I've read recently that had made sense and relatively easy to follow.
+
+<br>
+
+#### **Data retrieval**
+
+This time I've decided to try something new which was to use the ChEMBL webresource client to collect data (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way from the TeachOpenCADD talktorial on [compound data acquisition](https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html). The data retrieval workflow used below was mainly adapted from this talktorial, with a few changes or additions to suit the dataset used for this post.
+
+The webresource client was supported by the ChEMBL group and was based on a Django QuerySet interface. Their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it, particularly the Jupyter notebook link provided within the repository would help a lot regarding how to write code to search for specific data.
+
+To do this, a few libraries needed to be loaded first.
+
+```{python}
+# Import libraries
+# Fetch data through ChEMBL webresource client
+from chembl_webresource_client.new_client import new_client
+
+# RDKit modules
+#from rdkit.Chem import PandasTools
+
+# Dataframe library
+#import numpy as np
+import pandas as pd
+
+# Progress bar
+from tqdm import tqdm
+```
+
+To see what types of data were provided by ChEMBL webresource client, run the following code and refer to ChEMBL documentations to find out what data were embedded inside different data categories. Sometimes, it might not be that straight forward and some digging would be required (I went back to this step below to find the "data_validity_comment" when I was trying to do some compound sanitisations actually).
+
+```{python}
+available_resources = [resource for resource in dir(new_client) if not resource.startswith('_')]
+print(available_resources)
+```
+
+Resource objects were created to enable API access as suggested by the talktorial.
+
+```{python}
+# for targets (proteins)
+targets_api = new_client.target
+
+# for bioactivities
+bioact_api = new_client.activity
+
+# for compounds
+cpd_api = new_client.molecule
+```
+
+Checked object type for one of these API objects (e.g. bioactivity API object).
+
+```{python}
+type(bioact_api)
+```
+
+<br>
+
+##### **Fetching target data**
+
+Selected a protein target e.g. acetylcholinesterase (this was randomly chosen).
+
+```{python}
+# Specify Uniprot ID for acetylcholinesterase
+uniprot_id = "P22303"
+
+# Get info from ChEMBL about this protein target, 
+# with selected features only
+targets = targets_api.get(target_components__accession = uniprot_id).only(
+    "target_chembl_id",
+    "organism", 
+    "pref_name", 
+    "target_type"
+)
+```
+
+The query results were stored in a "targets" object, which was a QuerySet with lazy data evaluation only, meaning it would only react when there was a request for the data.
+
+```{python}
+# Read "targets" with Pandas
+targets = pd.DataFrame.from_records(targets)
+targets
+```
+
+Select protein target from this dataframe - choosing the first one.
+
+```{python}
+# Save the first protein in the dataframe
+select_target = targets.iloc[0]
+select_target
+```
+
+Save the selected ChEMBL ID first (to be used later).
+
+```{python}
+chembl_id = select_target.target_chembl_id
+# Check it's saved
+print(chembl_id)
+```
+
+<br>
+
+##### **Fetching bioactivity data**
+
+Obtaining bioactivity data for the selected target.
+
+```{python}
+bioact = bioact_api.filter(
+    # Use the previously saved target ChEMBL ID
+    target_chembl_id = chembl_id, 
+    # Bioactivity type
+    type = "IC50",
+    # Requesting exact measurements
+    relation = "=",
+    # Binding data as "B"
+    assay_type = "B"
+).only(
+    "activity_id",
+    "data_validity_comment"
+    "assay_chembl_id",
+    "assay_description",
+    "assay_type",
+    "molecule_chembl_id",
+    "type",
+    "standard_units",
+    "relation",
+    "standard_value",
+    "target_chembl_id",
+    "target_organism",
+)
+
+# Check the length and type of bioactivities object
+print(len(bioact), type(bioact))
+```
+
+To have a quick look at the data being held inside each entry of the bioactivity dataset, e.g. for first entry.
+
+```{python}
+print(len(bioact[0]), type(bioact[0]))
+bioact[0]
+```
+
+The next step might take a few minutes - downloading the QuerySet as a Pandas DataFrame.
+
+```{python}
+bioact_df = pd.DataFrame.from_dict(bioact)
+
+bioact_df.head()
+```
+
+Check total rows and columns in the bioactivities dataframe.
+
+```{python}
+bioact_df.shape
+```
+
+<br>
+
+###### **Pre-process bioactivity data**
+
+To see a variety of units being recorded in the ChEMBL database - would need to be converted to nM. 
+
+```{python}
+bioact_df["units"].unique()
+```
+
+The simplest thing to do was to drop the "units" and "value" columns, which were in micromolar (*m*M), and to avoid unit conversion to nanomolar (nM), we could use columns such as "standard_units" and "standard_value" which were recorded with nM already.
+
+```{python}
+bioact_df.drop(["units", "value"], axis = 1, inplace = True)
+# Re-check df
+bioact_df.head()
+```
+
+```{python}
+bioact_df.dtypes
+```
+
+```{python}
+# Small detour test
+# Tried with Polars - standard_value casted as "str", so would still need to convert to floats
+# import polars as pl
+# ba_df = pl.from_pandas(bioact_df)
+# ba_df.head()
+```
+
+Convert the column of "standard_value" from object to floats - so we could use this half maximal inhibitory concentration (IC50) values for calculations later.
+
+```{python}
+bioact_df = bioact_df.astype({"standard_value": "float64"})
+# Check column data types again
+bioact_df.dtypes
+```
+
+Taking care of any missing entries by removing them in the first place. I excluded "data_validity_comment" column in this exercise as this was required to check if there were any activity data of the compounds that were deemed to be not as valid e.g. excessively high IC50 value and so on. A lot of the compounds in this column probably had "None", which ensured that there were no particular alarm bells to the curated bioactivity data.
+
+```{python}
+bioact_df.dropna(subset = ["activity_id", "assay_chembl_id", "assay_description", "assay_type", "molecule_chembl_id", "relation", "standard_units", "standard_value", "target_chembl_id", "target_organism", "type"], axis = 0, how = "any", inplace = True)
+# Check number of rows and columns again (in this case, there appeared to be no change)
+bioact_df.shape
+```
+
+Since all unique units inside the "units" and "values" columns were checked previously, I'd done the same for the "standard_units" column to see the ones recorded in it.
+
+```{python}
+bioact_df["standard_units"].unique()
+```
+
+There were a mixture of nM, mM and also picomolars (pM)! 
+
+```{python}
+# Check for number of non-nM units
+bioact_df[bioact_df["standard_units"] != "nM"].shape[0]
+```
+
+There appeared to be 30 non-nM values inside the fetched bioactivity data.
+
+```{python}
+bioact_df = bioact_df[bioact_df["standard_units"] == "nM"]
+```
+
+Then narrow the results to only "nM" and check the dataframe again to see what units were left now.
+
+```{python}
+# Check there were only nM
+bioact_df["standard_units"].unique()
+```
+
+So the filtering worked and currently the number of rows and columns had been reduced.
+
+```{python}
+# Check df rows & columns
+bioact_df.shape
+```
+
+Next part would be to remove all duplicates in the dataframe, especially when there were duplicate tests for the same compound.
+
+```{python}
+bioact_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
+```
+
+Renamed the "standard_value" and "standard_units" columns to be "IC50" and "units" respectively.
+
+```{python}
+bioact_df.rename(
+    columns = {
+        "standard_value": "IC50",
+        "standard_units": "units"
+    }, inplace = True
+)
+
+# Check df to ensure name change
+bioact_df.head()
+```
+
+Lastly, the index of the dataframe was reset.
+
+```{python}
+bioact_df.reset_index(drop = True, inplace = True)
+bioact_df.head()
+```
+
+One final check on the number of columns and rows after pre-processing the bioactivity dataframe.
+
+```{python}
+bioact_df.shape
+```
+
+There were a total of 12 columns with 5,041 rows of data left in the bioactivity dataframe.
+
+<br>
+
+##### **Fetching compound data**
+
+While having identified the protein target and obtained the bioactivity data, this step was to link the bioactivity data to the compounds.
+
+This could be done by having the ChEMBL IDs available for the compounds involved in the bioactivity dataset.
+
+```{python}
+cpds = cpd_api.filter(
+    molecule_chembl_id__in = list(bioact_df["molecule_chembl_id"])
+).only(
+    "molecule_chembl_id",
+    "molecule_structures"
+)
+```
+
+Here, the same step was applied where the compound QuerySet object was converted into a Pandas dataframe. However, the dataset extracted this time could take longer than the time taken to fetch the bioactivity data. This was then monitored using a progress bar (tqdm package).
+
+```{python}
+compds = list(tqdm(cpds))
+```
+
+Converting retrieved compound QuerySet into a Pandas DataFrame.
+
+```{python}
+cpds_df = pd.DataFrame.from_records(compds)
+
+print(cpds_df.shape)
+cpds_df.head()
+```
+
+<br>
+
+###### **Pre-process compound data**
+
+Removing any missing entries in the compound data.
+
+```{python}
+cpds_df.dropna(axis = 0, how = "any", inplace = True)
+
+# Check columns & rows in df
+cpds_df.shape
+```
+
+Removing any duplicates in the compound data.
+
+
+```{python}
+cpds_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
+
+# Check columns & rows again
+cpds_df.shape
+```
+
+Ideally, only the compounds with canonical SMILES would be kept. Checking for the types of molecular representations used in the "molecule_structures" column of the compound dataset.
+
+```{python}
+# Randomly choosing the 2nd entry
+cpds_df.iloc[1].molecule_structures.keys()
+```
+
+There were 4 types as: "canonical_smiles", "molfile", "standard_inchi" and "standard_inchi_key".
+
+
+```{python}
+# Create an empty list to store the canonical smiles
+can_smiles = []
+
+# Create a for loop to loop over each row of data, 
+# searching for only canonical_smiles to append to the created list
+for i, cpd in cpds_df.iterrows():
+    try:
+        can_smiles.append(cpd["molecule_structures"]["canonical_smiles"])
+    except KeyError:
+        can_smiles.append(None)
+
+# Create a new df column with name as "smiles", 
+# which will store all the canonical smiles collected from the list above
+cpds_df["smiles"] = can_smiles
+```
+
+Check the compound dataframe quickly to see if a new column for SMILES has been created.
+
+```{python}
+cpds_df.head()
+```
+
+Once confirmed, the old "molecule_structures" column was then removed.
+
+```{python}
+cpds_df.drop("molecule_structures", axis = 1, inplace = True)
+```
+
+Finally, adding another step to ensure all missing entries or entries without canonical SMILES strings were removed from the compound dataset.
+
+```{python}
+cpds_df.dropna(axis = 0, how = "any", inplace = True)
+
+print(cpds_df.shape)
+```
+
+Final look at the compound dataset, which should only include compounds ChEMBL IDs and SMILES columns.
+
+```{python}
+cpds_df.head()
+```
+
+<br>
+
+##### **Combining bioactivity and compound data**
+
+To combine both datasets, the key was to look for common column (similar to a SQL "join" query) between the two datasets. 
+
+Listing all the column names for both datasets would show the common column.
+
+```{python}
+bioact_df.columns
+```
+
+```{python}
+cpds_df.columns
+```
+
+Clearly, the one column that existed in both dataframes was the "molecule_chembl_id" column.
+
+The next step was to combine or merge both datasets.
+
+```{python}
+# Create a final dataframe that will contain both bioactivity and compound data
+dtree_df = pd.merge(
+    bioact_df[["molecule_chembl_id", "IC50", "units", "data_validity_comment"]],
+    cpds_df,
+    on = "molecule_chembl_id",
+)
+
+dtree_df.head()
+```
+
+Row indices were reset and shape of the final dataframe was checked.
+
+```{python}
+dtree_df.reset_index(drop = True, inplace = True)
+
+print(dtree_df.shape)
+```
+
+Saving a copy of the merged dataframe for now (to avoid re-running the previous code repeatedly).
+
+```{python}
+dtree_df.to_csv("ache_chembl.csv")
+```
+
+The second-half of data pre-processing will carry on in the next post.
