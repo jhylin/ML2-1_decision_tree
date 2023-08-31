@@ -1,24 +1,30 @@
 ---
 title: "Tree models in ChEMBL data"
-subtitle: "ML series 2.1 - Decision tree - Data pre-processing 1 of 2"
-draft: true
+subtitle: "ML series 2.1 - decision tree - data pre-processing (part 1)"
+author: Jennifer HY Lin
+date: '2023-8-30'
+draft: false
+categories: 
+    - Pandas
+    - ChEMBL database
 jupyter: python3
 format: html
+bibliography: references.bib
 ---
 
 #### **Introduction**
 
 I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during the data preparation stage. So this would be attempted this time.
 
-From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seemed that traditional machine learning (ML) methods were still indispensible performance-wise, and when used in combination with deep learning neural networks, they tend to increase prediction accuracy more. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. However, from the comments from experienced seniors in this area, they were still very much novel and hence not as useful yet, and from what I could imagine, molecular representations in texts or strings probably had already created many headaches e.g. molecular standardisations regarding to whether to use canonical SMILES and/or SELFIES or not, and other areas such as chiralities and aromaticities and so on. Because of this, I'd be sticking with learning to walk first in the conventional ML area before trying to run in other more in-depth areas (more likely to happen in the future).
+From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seemed that traditional machine learning (ML) methods were still indispensible performance-wise, and when used in combination with deep learning neural networks, they tend to increase prediction accuracy more in the drug discovery field. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. However, comments from experienced seniors in this area did mention that they were still very much novel and hence not as useful yet, and from what I could imagine, molecular representations in texts or strings probably had already created many headaches e.g. molecular standardisations in regard to whether to use canonical SMILES and SELFIES or not, and other areas such as chiralities and aromaticities etc. Because of this, I'm sticking with learning to walk first in the conventional ML area before trying to run in the more in-depth areas such as deep learning (coming up in the future).
 
-The data preparation used here was carried out with strong reference to the materials and methods section in this paper: van Tilborg, D. *et al*. J. Chem. Inf. Model. 2022, 62, 5938-5951. There were probably other methods out there, but this was the paper I've read recently that had made sense and relatively easy to follow.
+The data preparation used here was carried out with strong reference to the materials and methods section in this paper [@vantilborg2022]. There were probably other methods out there, but this was the paper I've read recently that had made sense and relatively easy to follow.
 
 <br>
 
 #### **Data retrieval**
 
-This time I've decided to try something new which was to use the ChEMBL webresource client to collect data (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way from the TeachOpenCADD talktorial on [compound data acquisition](https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html). The data retrieval workflow used below was mainly adapted from this talktorial, with a few changes or additions to suit the dataset used for this post.
+This time I decided to try something new which was to use the ChEMBL webresource client to collect data (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way from the TeachOpenCADD talktorial on [compound data acquisition](https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html). The data retrieval workflow used below was mainly adapted from this talktorial, with a few changes or additions to suit the dataset used for this post.
 
 The webresource client was supported by the ChEMBL group and was based on a Django QuerySet interface. Their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it, particularly the Jupyter notebook link provided within the repository would help a lot regarding how to write code to search for specific data.
 
@@ -29,11 +35,7 @@ To do this, a few libraries needed to be loaded first.
 # Fetch data through ChEMBL webresource client
 from chembl_webresource_client.new_client import new_client
 
-# RDKit modules
-#from rdkit.Chem import PandasTools
-
 # Dataframe library
-#import numpy as np
 import pandas as pd
 
 # Progress bar
@@ -70,7 +72,7 @@ type(bioact_api)
 
 ##### **Fetching target data**
 
-Selected a protein target e.g. acetylcholinesterase (this was randomly chosen).
+A protein target e.g. acetylcholinesterase was randomly chosen by using [UniProt](https://www.uniprot.org/) to look up the protein UniProt ID.
 
 ```{python}
 # Specify Uniprot ID for acetylcholinesterase
@@ -86,7 +88,7 @@ targets = targets_api.get(target_components__accession = uniprot_id).only(
 )
 ```
 
-The query results were stored in a "targets" object, which was a QuerySet with lazy data evaluation only, meaning it would only react when there was a request for the data.
+The query results were stored in a "targets" object, which was a QuerySet with lazy data evaluation only, meaning it would only react when there was a request for the data. Therefore, to see the results, the "targets" object was then read through Pandas DataFrame.
 
 ```{python}
 # Read "targets" with Pandas
@@ -94,7 +96,7 @@ targets = pd.DataFrame.from_records(targets)
 targets
 ```
 
-Select protein target from this dataframe - choosing the first one.
+Selected the first protein target from this dataframe.
 
 ```{python}
 # Save the first protein in the dataframe
@@ -102,7 +104,7 @@ select_target = targets.iloc[0]
 select_target
 ```
 
-Save the selected ChEMBL ID first (to be used later).
+Then saved the selected ChEMBL ID for the first protein (to be used later).
 
 ```{python}
 chembl_id = select_target.target_chembl_id
@@ -114,18 +116,22 @@ print(chembl_id)
 
 ##### **Fetching bioactivity data**
 
+**Need to decide to use either IC50 or Ki (or both) - seems Ki may be more suitable**
+
 Obtaining bioactivity data for the selected target.
 
 ```{python}
 bioact = bioact_api.filter(
     # Use the previously saved target ChEMBL ID
     target_chembl_id = chembl_id, 
-    # Bioactivity type
+    # Bioactivity type - choosing IC50 - ?should use Ki instead
     type = "IC50",
+    # ?Added Ki
+    #standard_type = "Ki",
     # Requesting exact measurements
     relation = "=",
     # Binding data as "B"
-    assay_type = "B"
+    assay_type = "B",
 ).only(
     "activity_id",
     "data_validity_comment"
@@ -135,6 +141,7 @@ bioact = bioact_api.filter(
     "molecule_chembl_id",
     "type",
     "standard_units",
+    "standard_type",
     "relation",
     "standard_value",
     "target_chembl_id",
@@ -160,7 +167,7 @@ bioact_df = pd.DataFrame.from_dict(bioact)
 bioact_df.head()
 ```
 
-Check total rows and columns in the bioactivities dataframe.
+Checked total rows and columns in the bioactivities dataframe.
 
 ```{python}
 bioact_df.shape
@@ -170,13 +177,13 @@ bioact_df.shape
 
 ###### **Pre-process bioactivity data**
 
-To see a variety of units being recorded in the ChEMBL database - would need to be converted to nM. 
+To see a variety of units being recorded in the ChEMBL database, which meant they would need to be converted to nanomolar (nM).
 
 ```{python}
 bioact_df["units"].unique()
 ```
 
-The simplest thing to do was to drop the "units" and "value" columns, which were in micromolar (*m*M), and to avoid unit conversion to nanomolar (nM), we could use columns such as "standard_units" and "standard_value" which were recorded with nM already.
+The simplest thing to do was to drop the "units" and "value" columns, which were in micromolar (μM), and to avoid unit conversion to nM, we could use columns such as "standard_units" and "standard_value" which were recorded with nM already.
 
 ```{python}
 bioact_df.drop(["units", "value"], axis = 1, inplace = True)
@@ -188,15 +195,9 @@ bioact_df.head()
 bioact_df.dtypes
 ```
 
-```{python}
-# Small detour test
-# Tried with Polars - standard_value casted as "str", so would still need to convert to floats
-# import polars as pl
-# ba_df = pl.from_pandas(bioact_df)
-# ba_df.head()
-```
+At this stage, I did a little detour test to see how this dataframe would be read in Polars dataframe library, particularly to see if the data types for each column might be more accurate than how it was in Pandas. After converting this Pandas dataframe into a Polars one, I realised that even Polars was reading in the "standard_value" column as "str", which meant it would still need another conversion into "float64" anyway. Therefore, I decided to stick with Pandas all the way since there were not so much differences between the two dataframe libraries.
 
-Convert the column of "standard_value" from object to floats - so we could use this half maximal inhibitory concentration (IC50) values for calculations later.
+The column of "standard_value" was converted from "object" to "float64" - so we could use this half maximal inhibitory concentration (IC50) values for calculations later.
 
 ```{python}
 bioact_df = bioact_df.astype({"standard_value": "float64"})
@@ -204,11 +205,11 @@ bioact_df = bioact_df.astype({"standard_value": "float64"})
 bioact_df.dtypes
 ```
 
-Taking care of any missing entries by removing them in the first place. I excluded "data_validity_comment" column in this exercise as this was required to check if there were any activity data of the compounds that were deemed to be not as valid e.g. excessively high IC50 value and so on. A lot of the compounds in this column probably had "None", which ensured that there were no particular alarm bells to the curated bioactivity data.
+Then the next step was taking care of any missing entries by removing them in the first place. I excluded "data_validity_comment" column here as this was required to check if there were any activity data that were deemed to be not as valid e.g. excessively high IC50 value and so on. A lot of the compounds in this column probably had "None", which ensured that there were no particular alarm bells to the curated bioactivity data.
 
 ```{python}
 bioact_df.dropna(subset = ["activity_id", "assay_chembl_id", "assay_description", "assay_type", "molecule_chembl_id", "relation", "standard_units", "standard_value", "target_chembl_id", "target_organism", "type"], axis = 0, how = "any", inplace = True)
-# Check number of rows and columns again (in this case, there appeared to be no change)
+# Check number of rows and columns again (in this case, there appeared to be no change for rows)
 bioact_df.shape
 ```
 
@@ -218,7 +219,7 @@ Since all unique units inside the "units" and "values" columns were checked prev
 bioact_df["standard_units"].unique()
 ```
 
-There were a mixture of nM, mM and also picomolars (pM)! 
+There were a mixture of nM, μM and also picomolars (pM)!
 
 ```{python}
 # Check for number of non-nM units
@@ -231,27 +232,27 @@ There appeared to be 30 non-nM values inside the fetched bioactivity data.
 bioact_df = bioact_df[bioact_df["standard_units"] == "nM"]
 ```
 
-Then narrow the results to only "nM" and check the dataframe again to see what units were left now.
+I then narrowed the results to only "nM" and checked the dataframe again to see what units were left now.
 
 ```{python}
 # Check there were only nM
 bioact_df["standard_units"].unique()
 ```
 
-So the filtering worked and currently the number of rows and columns had been reduced.
+So the filtering worked and the number of rows and columns were reduced.
 
 ```{python}
 # Check df rows & columns
 bioact_df.shape
 ```
 
-Next part would be to remove all duplicates in the dataframe, especially when there were duplicate tests for the same compound.
+Next part would be to remove all the duplicates in the dataframe, especially when there were duplicate tests for the same compound.
 
 ```{python}
 bioact_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
 ```
 
-Renamed the "standard_value" and "standard_units" columns to be "IC50" and "units" respectively.
+Renamed the "standard_value" and "standard_units" columns to "IC50" and "units" respectively.
 
 ```{python}
 bioact_df.rename(
@@ -300,7 +301,14 @@ cpds = cpd_api.filter(
 Here, the same step was applied where the compound QuerySet object was converted into a Pandas dataframe. However, the dataset extracted this time could take longer than the time taken to fetch the bioactivity data. This was then monitored using a progress bar (tqdm package).
 
 ```{python}
-compds = list(tqdm(cpds))
+# Uncomment line below to use progress bar
+# when running in ipynb or qmd files
+#compds = list(tqdm(cpds))
+
+# Code below was the same as above, 
+# except without the progress bar
+# - for published version (images of progress bar taking too much space)
+compds = list(cpds)
 ```
 
 Converting retrieved compound QuerySet into a Pandas DataFrame.
@@ -327,7 +335,6 @@ cpds_df.shape
 
 Removing any duplicates in the compound data.
 
-
 ```{python}
 cpds_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
 
@@ -343,7 +350,6 @@ cpds_df.iloc[1].molecule_structures.keys()
 ```
 
 There were 4 types as: "canonical_smiles", "molfile", "standard_inchi" and "standard_inchi_key".
-
 
 ```{python}
 # Create an empty list to store the canonical smiles
@@ -392,7 +398,7 @@ cpds_df.head()
 
 ##### **Combining bioactivity and compound data**
 
-To combine both datasets, the key was to look for common column (similar to a SQL "join" query) between the two datasets. 
+To combine both datasets, the key was to look for common column (similar to a SQL "join" query) between the two datasets.
 
 Listing all the column names for both datasets would show the common column.
 

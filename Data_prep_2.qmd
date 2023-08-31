@@ -1,9 +1,10 @@
 ---
 title: "Tree models in ChEMBL data"
-subtitle: "ML series 2.1 - Decision tree - Data pre-processing 2 of 2"
+subtitle: "ML series 2.1 - decision tree - data pre-processing (part 2)"
 draft: true
 jupyter: python3
 format: html
+bibliography: references.bib
 ---
 
 Since data preparation and cleaning was a well-known process that would take up a lot of time, I've decided to split this part into two posts to ensure the reading time for each post was reasonable.
@@ -74,7 +75,7 @@ Applying the calc_pIC50 function to convert all rows of the compound dataset for
 dtree_df["pIC50"] = dtree_df.apply(lambda x: calc_pIC50(x.IC50), axis = 1)
 ```
 
-The dataframe would now look like this, with a new pIC50 column ready for use.
+The dataframe would now look like this, with a new pIC50 column ready for use. Now, one question regarding to IC50 was whether it was a good idea to use IC50 values like this from public database like ChEMBL. This paper [@Kalliokoski2013a] may provide further things to consider.
 
 ```{python}
 dtree_df.head()
@@ -176,7 +177,7 @@ def _preprocess(row):
     return row
 ```
 
-Then the compound sanitisation function was applied to the dtree_df. 
+Then the compound sanitisation function was applied to the dtree_df.
 
 ```{python}
 dtree_san_df = dtree_df.apply(_preprocess, axis = 1)
@@ -185,7 +186,7 @@ dtree_san_df.head()
 
 Please note if the dataset required for sanitisation is large, Datamol has suggested using their example code to add parallelisation as shown below.
 
-```{{python}}
+``` {{python}}
 # Code adapted from: https://docs.datamol.io/stable/tutorials/Preprocessing.html#references
 data_clean = dm.parallelized(
     _preprocess, 
@@ -213,12 +214,12 @@ Plotting a histogram to see the distribution of pIC50 values first.
 dtree_san_df.hist(column = "pIC50")
 ```
 
-I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were: 
+I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were:
 
-- normally distributed data 
-- a small sample size e.g. between 3 and 10 (as originally stated in the paper published by R. B. Dean and W. J. Dixon (1951) Simplified Statistics for Small Numbers of Observations”. Anal. Chem., 1951, 23 (4), 636–638).
+-   normally distributed data
+-   a small sample size e.g. between 3 and 10 (as originally stated in the paper published by R. B. Dean and W. J. Dixon (1951) Simplified Statistics for Small Numbers of Observations". Anal. Chem., 1951, 23 (4), 636--638).
 
-So I've decided that rather than showing Python code for Dixon's Q test myself, I'd attach a few examples from others instead, [Q test from Plotly](https://plotly.com/python/v3/outlier-test/) and also [Dixon's Q test for outlier identification – a questionable practice](https://sebastianraschka.com/Articles/2014_dixon_test.html), since this dataset here wasn't quite normally distributed as shown from the histogram plotted above. 
+So I've decided that rather than showing Python code for Dixon's Q test myself, I'd attach a few examples from others instead, [Q test from Plotly](https://plotly.com/python/v3/outlier-test/) and also [Dixon's Q test for outlier identification -- a questionable practice](https://sebastianraschka.com/Articles/2014_dixon_test.html), since this dataset here wasn't quite normally distributed as shown from the histogram plotted above.
 
 ```{python}
 dtree_san_df.boxplot(column = "pIC50")
