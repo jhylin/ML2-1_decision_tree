@@ -2,7 +2,7 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - decision tree - data pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-8-30'
+date: '2023-9-1'
 draft: true
 categories: 
     - Pandas
@@ -154,7 +154,7 @@ print(len(bioact[0]), type(bioact[0]))
 bioact[0]
 ```
 
-The next step might take a few minutes - downloading the QuerySet as a Pandas DataFrame.
+The next step might take a few minutes (if using a different protein target) - downloading the QuerySet as a Pandas DataFrame.
 
 ```{python}
 bioact_df = pd.DataFrame.from_dict(bioact)
@@ -172,19 +172,17 @@ bioact_df.shape
 
 ###### **Pre-process bioactivity data**
 
-When I reached the second half of data pre-processing, an alarm bell went off regarding using IC50 values in ChEMBL. I remembered that I've read recent blog posts by Greg Landrum about using [IC50](https://greglandrum.github.io/rdkit-blog/posts/2023-06-12-overlapping-ic50-assays1.html) and [Ki](https://greglandrum.github.io/rdkit-blog/posts/2023-06-17-overlapping-Ki-assays1.html) values from ChEMBL. A useful paper [@Kalliokoski] from 2013 also looked into this issue about using mixed IC50 data in ChEMBL, and provided a thorough overview about how to deal with situations like this.
+When I reached the second half of data pre-processing, an alarm bell went off regarding using half maximal inhibitory concentration (IC50) values in ChEMBL. I remembered that I've read recent blog posts by Greg Landrum about using [IC50](https://greglandrum.github.io/rdkit-blog/posts/2023-06-12-overlapping-ic50-assays1.html) and inhibition constant [(Ki)](https://greglandrum.github.io/rdkit-blog/posts/2023-06-17-overlapping-Ki-assays1.html) values from ChEMBL. A useful paper [@Kalliokoski] from 2013 also looked into this issue about using mixed IC50 data in ChEMBL, and provided a thorough overview about how to deal with situations like this.
 
-So to summarise both the paper and blog posts mentioned above, if anyone would like to combine IC50 values for the same protein target from ChEMBL, they would need to check the details of assays used for the compounds to make sure they were aligned and not extremely heterogeneous, as IC50 values were very assay-specific, mixing without knowing was definitely not a good idea. The slightly better news was that it was more likely to be better to combine Ki values for the same protein target from ChEMBL as they were found to be adding less noise to the data (similar data caution should also apply). However, it was possible to mix Ki values with IC50 values, but the data would need to be corrected by an offset, which was via using a conversion factor of 2.0 to convert Ki values to IC50 values (note: I also wondered if this needed to be re-looked again in a study since this paper was 10 years ago, and I suspected there might be some changes to ChEMBL database?)
+So to summarise both the paper and blog posts mentioned above, if anyone would like to combine IC50 values for the same protein target from ChEMBL, they would need to check the details of assays used for the compounds to make sure they were aligned and not extremely heterogeneous, as IC50 values were very assay-specific, mixing without knowing was definitely not a good idea. The slightly better news was that it was more likely to be better to combine Ki values for the same protein target from ChEMBL as they were found to be adding less noise to the data (similar data caution should also apply ideally). However, it was possible to mix Ki values with IC50 values, but the data would need to be corrected via using a conversion factor of 2.0 to convert Ki values to IC50 values (note: I also wondered if this needed to be re-looked again in a study since this paper was 10 years ago, and I suspected ChEMBL database might change during these years?)
 
-Because of this, I decided to stick with Ki values for this project.
-
-Firstly, I checked for all types of units being used in this bioact_df. There were numerous different units and formats, which meant they would need to be converted to nanomolar (nM).
+Because of this, I decided to stick with Ki values for this project. Firstly, I checked for all types of units being used in bioact_df. There were numerous different units and formats, which meant they would need to be converted to nanomolar (nM).
 
 ```{python}
 bioact_df["units"].unique()
 ```
 
-Checking again that what I've fetched was Ki values only.
+Checking again that I've fetched Ki values only.
 
 ```{python}
 bioact_df["standard_type"].unique()
@@ -192,7 +190,7 @@ bioact_df["standard_type"].unique()
 
 It looked like there were duplicates of columns on units and values - removing "units" and "value" columns and keeping "standard_units" and "standard_value" columns instead. Also, "type" column was dropped as there were already a "standard_type" column. 
 
-Differences between "type" and "standard_type" columns were explained by this ChEMBL [blog post](https://chembl.blogspot.com/2013/02/latest-activities-on-activities-table.html).
+*Differences between "type" and "standard_type" columns were mentioned by this ChEMBL [blog post](https://chembl.blogspot.com/2013/02/latest-activities-on-activities-table.html).*
 
 ```{python}
 bioact_df.drop(["units", "value", "type"], axis = 1, inplace = True)
@@ -204,7 +202,7 @@ bioact_df.head()
 bioact_df.dtypes
 ```
 
-The column of "standard_value" was converted from "object" to "float64" - so we could use Ki values for calculations later.
+The column of "standard_value" was converted from "object" to "float64" so we could use the Ki values for calculations later.
 
 ```{python}
 bioact_df = bioact_df.astype({"standard_value": "float64"})
