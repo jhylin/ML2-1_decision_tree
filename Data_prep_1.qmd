@@ -210,12 +210,10 @@ bioact_df = bioact_df.astype({"standard_value": "float64"})
 bioact_df.dtypes
 ```
 
-**Old content below - draft**
-
 Then the next step was taking care of any missing entries by removing them in the first place. I excluded "data_validity_comment" column here as this was required to check if there were any activity data that were deemed to be not as valid e.g. excessively high IC50 value and so on. A lot of the compounds in this column probably had "None", which ensured that there were no particular alarm bells to the curated bioactivity data.
 
 ```{python}
-bioact_df.dropna(subset = ["activity_id", "assay_chembl_id", "assay_description", "assay_type", "molecule_chembl_id", "relation", "standard_units", "standard_value", "target_chembl_id", "target_organism", "standard_type"], axis = 0, how = "any", inplace = True)
+bioact_df.dropna(subset = ["activity_id", "assay_chembl_id", "assay_description", "assay_type", "molecule_chembl_id", "relation",  "standard_type", "standard_units", "standard_value", "target_chembl_id", "target_organism"], axis = 0, how = "any", inplace = True)
 # Check number of rows and columns again (in this case, there appeared to be no change for rows)
 bioact_df.shape
 ```
@@ -226,14 +224,14 @@ Since all unique units inside the "units" and "values" columns were checked prev
 bioact_df["standard_units"].unique()
 ```
 
-There were a mixture of nM, μM and also picomolars (pM)!
+There were a mixture of different units.
 
 ```{python}
 # Check for number of non-nM units
 bioact_df[bioact_df["standard_units"] != "nM"].shape[0]
 ```
 
-There appeared to be 30 non-nM values inside the fetched bioactivity data.
+There appeared to be 61 non-nM values inside the fetched bioactivity data.
 
 ```{python}
 bioact_df = bioact_df[bioact_df["standard_units"] == "nM"]
@@ -259,12 +257,12 @@ Next part would be to remove all the duplicates in the dataframe, especially whe
 bioact_df.drop_duplicates("molecule_chembl_id", keep = "first", inplace = True)
 ```
 
-Renamed the "standard_value" and "standard_units" columns to "IC50" and "units" respectively.
+Renamed the "standard_value" and "standard_units" columns to "Ki" and "units" respectively.
 
 ```{python}
 bioact_df.rename(
     columns = {
-        "standard_value": "IC50",
+        "standard_value": "Ki",
         "standard_units": "units"
     }, inplace = True
 )
@@ -310,12 +308,12 @@ Here, the same step was applied where the compound QuerySet object was converted
 ```{python}
 # Uncomment line below to use progress bar
 # when running in ipynb or qmd files
-#compds = list(tqdm(cpds))
+compds = list(tqdm(cpds))
 
 # Code below was the same as above, 
 # except without the progress bar
 # - for published version (images of progress bar taking too much space)
-compds = list(cpds)
+#compds = list(cpds)
 ```
 
 Converting retrieved compound QuerySet into a Pandas DataFrame.
@@ -424,7 +422,7 @@ The next step was to combine or merge both datasets.
 ```{python}
 # Create a final dataframe that will contain both bioactivity and compound data
 dtree_df = pd.merge(
-    bioact_df[["molecule_chembl_id", "IC50", "units", "data_validity_comment"]],
+    bioact_df[["molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
     cpds_df,
     on = "molecule_chembl_id",
 )
@@ -440,7 +438,7 @@ dtree_df.reset_index(drop = True, inplace = True)
 print(dtree_df.shape)
 ```
 
-Saving a copy of the merged dataframe for now (to avoid re-running the previous code repeatedly).
+Saving a copy of the merged dataframe for now (to avoid re-running the previous code repeatedly, and be ready for second-half of the work).
 
 ```{python}
 dtree_df.to_csv("ache_chembl.csv")
