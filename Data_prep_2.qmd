@@ -13,6 +13,10 @@ format: html
 bibliography: references.bib
 ---
 
+##### **Data source**
+
+**To explain source of dataframe**
+
 Since data preparation and cleaning was a well-known process that would take up a lot of time, I've decided to split this part into two posts to ensure the reading time for each post was reasonable.
 
 ```{python}
@@ -52,9 +56,10 @@ From the above quick statistical summary and also the code below to find out the
 dtree_df["Ki"].min()
 ```
 
-Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nM units was (**use LaTex for formula**):
-
-pKi = 9 - log10(Ki)
+Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nM units was:
+$$
+\text{pKi} = 9 - log _{10}(Ki)
+$$
 
 Set up a small function to do the conversion.
 
@@ -230,3 +235,5 @@ So I used Pandas' built-in boxplot in addition to the histogram to show the like
 <br>
 
 #### **Molecular descriptors**
+
+To be continued.
