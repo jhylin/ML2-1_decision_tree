@@ -15,9 +15,7 @@ bibliography: references.bib
 
 ##### **Data source**
 
-**To explain source of dataframe**
-
-Since data preparation and cleaning was a well-known process that would take up a lot of time, I've decided to split this part into two posts to ensure the reading time for each post was reasonable.
+The data used in part 2 of data pre-processing was extracted from ChEMBL database by using ChEMBL webresource client in Python. The details of all the steps taken to reach the final .csv file could be seen in this earlier *post*. Since data preparation and cleaning was a well-known process that would take up a lot of time before doing anything significant on the data, I've decided to split this process into two posts to ensure the reading time for each post was not overly long.
 
 ```{python}
 # Import all libraries used
@@ -28,7 +26,7 @@ import datamol as dm
 
 <br>
 
-##### **Re-importing saved dataframe**
+##### **Re-importing saved data**
 
 Re-imported the partly pre-processed dtree_df from the earlier post.
 
@@ -44,19 +42,20 @@ dtree_df = dtree_df.drop("Unnamed: 0", axis = 1)
 dtree_df.head()
 ```
 
-The merged dataframe was found to have Ki with zero nM, which meant the function to convert Ki to pKi would not proceed (due to natural log of zero normally means undefined answer!). So a good practice to clean data like this was probably best to run a statistical summary such as the code below first, then look for minimum and maximum values and also others to see if there were anything to be tidied up first.
+The distribution of Ki values were shown below via a simple statistical summary.
 
 ```{python}
 dtree_df.describe()
 ```
 
-From the above quick statistical summary and also the code below to find out the minimum Ki value, it confirmed that there were no zero Ki values recorded.
+From the above quick statistical summary and also the code below to find the minimum Ki value, it confirmed that there were no zero Ki values recorded.
 
 ```{python}
 dtree_df["Ki"].min()
 ```
 
-Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nM units was:
+Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nM units was: 
+
 $$
 \text{pKi} = 9 - log _{10}(Ki)
 $$
@@ -77,7 +76,7 @@ Applying the calc_pKi function to convert all rows of the compound dataset for t
 dtree_df["pKi"] = dtree_df.apply(lambda x: calc_pKi(x.Ki), axis = 1)
 ```
 
-The dataframe would now look like this, with a new pKi column ready for use. Now, one question regarding to Ki was whether it was a good idea to use Ki values like this from public database like ChEMBL. This paper [@Kalliokoski2013a] may provide further things to consider.
+The dataframe would now look like this, with a new pKi column.
 
 ```{python}
 dtree_df.head()
@@ -85,7 +84,7 @@ dtree_df.head()
 
 However, for a decision tree model, a few more molecular descriptors were probably needed rather than only Ki or pKi and SMILES... One way to do this could be through computations based on canonical SMILES of compounds by using RDKit to add some molecular descriptors.
 
-Before doing this, a compound sanitisation step would probably be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or Datamol (a Python wrapper library built based on RDKit).
+Before doing this, a compound sanitisation step would be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or Datamol (a Python wrapper library built based on RDKit).
 
 I thought to convert the data types of the "smiles" and "data_validity_comment" columns to string first (in case of running into problems later).
 
@@ -94,13 +93,13 @@ dtree_df = dtree_df.astype({"smiles": "string", "data_validity_comment": "string
 dtree_df.dtypes
 ```
 
-Also, before jumping straight to compound sanitisation, I thought I should check out if there were any comments in the "data_validity_comment" column.
+Also, before jumping straight to compound sanitisation, I thought to check the "data_validity_comment" column.
 
 ```{python}
 dtree_df["data_validity_comment"].unique()
 ```
 
-Interestingly, there were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant compounds with comments would need to be addressed first.
+There were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant compounds with comments would need to be addressed first.
 
 ```{python}
 # Find out number of compounds with "outside typical range" as data validity comment
@@ -116,7 +115,7 @@ dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
 
 There were 1 compound with potential transcription errors for the Ki value.
 
-This meant it would be best to remove these compounds with questionable Ki values, as they could be potential sources of errors for ML models later on. One of the ways I thought of doing was to fill the empty cells under "data_validity_comment" column first, so they would be easier to be filtered and kept for further use.
+These compounds with questionable Ki values were removed, as they could be potential sources of errors for ML models later on. One of the ways I thought of doing was to fill the empty cells under "data_validity_comment" column first, so it would be easier to filter them out.
 
 ```{python}
 # Fill "NaN" entries with an actual name e.g. zero
@@ -142,7 +141,7 @@ dtree_df["data_validity_comment"].unique()
 
 #### **Compound sanitisation**
 
-I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided by Datamol at the bottom of the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select pre-processing options required to fit the purpose of the ML models being built later on, and more experiences in doing this would also help to improve the compound pre-processing step.
+I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided by Datamol in the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select pre-processing options required to fit the purpose of the ML models being built later on, and more experiences in doing this would also help to improve the compound pre-processing step.
 
 ```{python}
 # _preprocess function to sanitise compounds - adapted from datamol.io
@@ -166,6 +165,7 @@ def _preprocess(row):
         reionize=True,
         # Decided to switch on "uncharge" to neutralise charges - the only change
         uncharge=True,
+        # Taking care of stereochemistries of compounds
         stereo=True,
     )
 
@@ -218,7 +218,7 @@ dtree_san_df.hist(column = "pKi")
 I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were:
 
 -   normally distributed data
--   a small sample size e.g. between 3 and 10 (as originally stated in the paper published by R. B. Dean and W. J. Dixon (1951) Simplified Statistics for Small Numbers of Observations". Anal. Chem., 1951, 23 (4), 636--638).
+-   a small sample size e.g. between 3 and 10, which was originally stated in this paper [@dean1951].
 
 So I've decided that rather than showing Python code for Dixon's Q test myself, I'd attach a few examples from others instead, [Q test from Plotly](https://plotly.com/python/v3/outlier-test/) and also [Dixon's Q test for outlier identification -- a questionable practice](https://sebastianraschka.com/Articles/2014_dixon_test.html), since this dataset here wasn't quite normally distributed as shown from the histogram plotted above.
 
@@ -230,7 +230,7 @@ dtree_san_df.boxplot(column = "pKi")
 #dtree_san_df.plot.box(column = "pKi")
 ```
 
-So I used Pandas' built-in boxplot in addition to the histogram to show the likely outliers within the pKi values. Clearly, the possible outliers for pKi values appeared to be above 10. I've then decided not to completely remove these outliers due to the dataset itself being not in a Gaussian distribution (which meant they might not be true outliers).
+I also used Pandas' built-in boxplot in addition to the histogram to show the possible outliers within the pKi values. Clearly, the outliers for pKi values appeared to be above 10. I've also decided not to completely remove these outliers due to the dataset itself being not in a Gaussian distribution (which meant they might not be true outliers).
 
 <br>
 
