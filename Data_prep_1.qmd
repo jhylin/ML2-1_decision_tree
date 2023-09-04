@@ -2,9 +2,10 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - decision tree - data pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-9-1'
+date: '2023-9-4'
 draft: true
 categories: 
+    - Machine learning projects
     - Pandas
     - ChEMBL database
 jupyter: python3
@@ -16,15 +17,15 @@ bibliography: references.bib
 
 I've now come to a stage to do some more in-depth machine learning work after reading some peer-reviewed papers about it in relation to drug discovery and cheminformatics. Previously, I've only lightly touched on a commonly used classifier algorithm, logistic regression, as the first series in the machine learning realm. Reflecting back, I think I could've done a more thorough job during the data preparation stage. So this would be attempted this time.
 
-From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seemed that traditional machine learning (ML) methods were still indispensible performance-wise, and when used in combination with deep learning neural networks, they tend to increase prediction accuracy more in the drug discovery field. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. However, comments from experienced seniors in this area did mention that they were still very much novel and hence not as useful yet, and from what I could imagine, molecular representations in texts or strings probably had already created many headaches e.g. molecular standardisations in regard to whether to use canonical SMILES and SELFIES or not, and other areas such as chiralities and aromaticities etc. Because of this, I'm sticking with learning to walk first in the conventional ML area before trying to run in the more in-depth areas such as deep learning (coming up in the future).
+From a few of the papers I've read so far, dated in the recent years of 2021 and 2022, it seems that traditional machine learning (ML) methods are still indispensible performance-wise, and when used in combination with deep learning neural networks, they tend to increase prediction accuracy more in the drug discovery field. I haven't ventured into the practicality and usefulness of large language models in drug discovery yet. However, comments from experienced seniors in this area did mention that they are still very much novel and hence may not as useful yet (however by the speed of how things evolve in the so-called "AI" field currently, perhaps this may change when this post gets published?), and from what I can imagine, molecular representations in texts or strings (such as SMILES or SELFIES) are not quite the same as natural language texts, as there are a lot of other chemistry-specific things to consider e.g. chiralities, aromaticities and so on. Because of this, I'm sticking with learning to walk first in the conventional ML area (trying to cover it in a more thorough way) before trying to run in the deep learning zone.
 
-The data preparation used here was carried out with strong reference to the materials and methods section in this paper [@vantilborg2022]. There were probably other methods out there, but this was the paper I've read recently that had made sense and relatively easy to follow.
+The data preparation used here was carried out with strong reference to the materials and methods section in this paper [@vantilborg2022]. There are probably other methods out there, but this was the paper that had made sense and relatively easy to follow when I read it earlier.
 
 <br>
 
 #### **Data retrieval**
 
-This time I decided to try something new which was to use the ChEMBL webresource client to collect data (i.e. not from direct file downloads from the ChEMBL website). I found this great online resource about fetching data this way from the TeachOpenCADD talktorial on [compound data acquisition](https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html). The data retrieval workflow used below was mainly adapted from this talktorial, with a few changes or additions to suit the dataset used for this post.
+This time I decided to try something new which was to use the ChEMBL webresource client to collect data (i.e. not by direct file downloads from ChEMBL website, although other useful way could be through SQL queries, which is also on my list to try later). I found this great online resource about fetching data this way from the TeachOpenCADD talktorial on [compound data acquisition](https://projects.volkamerlab.org/teachopencadd/talktorials/T001_query_chembl.html). The data retrieval workflow used below was mainly adapted from this talktorial, but with a few changes to suit the selected dataset and machine learning model selected for this ML series 2 project.
 
 The webresource client was supported by the ChEMBL group and was based on a Django QuerySet interface. Their [GitHub repository](https://github.com/chembl/chembl_webresource_client) might explain a bit more about it, particularly the Jupyter notebook link provided within the repository would help a lot regarding how to write code to search for specific data.
 
