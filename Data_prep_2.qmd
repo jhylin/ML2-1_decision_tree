@@ -239,8 +239,19 @@ I also used Pandas' built-in boxplot in addition to the histogram to show the po
 
 #### **Molecular descriptors**
 
+Check references:
+TeachOpenCadd T002
+Chemistry Libretexts
+RDKit docs - descriptors
 Datamol's molecular descriptors code - check documentations
+Useful blog posts by P. Zin
+Check blog posts by P. Walters & G. Landrum?
+
+To consider:
+0D - 2D descriptors or only 2D?
+Likely not going to use fingerprints yet?
 
 ```{python}
+# Datamol sample descriptor code to create mol descriptors for batch compounds
 dm.descriptors.batch_compute_many_descriptors()
 ```
