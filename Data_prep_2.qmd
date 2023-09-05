@@ -2,7 +2,7 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - decision tree - data pre-processing (part 2)"
 author: Jennifer HY Lin
-date: '2023-9-4'
+date: '2023-9-5'
 draft: true
 categories: 
     - Machine learning projects
@@ -15,7 +15,7 @@ bibliography: references.bib
 
 ##### **Data source**
 
-The data used in part 2 of data pre-processing was extracted from ChEMBL database by using ChEMBL webresource client in Python. The details of all the steps taken to reach the final .csv file could be seen in this earlier *post*. Since data preparation and cleaning was a well-known process that would take up a lot of time before doing anything significant on the data, I've decided to split this process into two posts to ensure the reading time for each post was not overly long.
+The data used in part 2 of data pre-processing was extracted from ChEMBL database by using ChEMBL webresource client in Python. The details of all the steps taken to reach the final .csv file could be seen in this earlier *post*. Since data preparation and cleaning was a well-known process that would take up a lot of time before doing anything significant on the data, I've splitted this process into two posts to ensure reasonable reading time for each.
 
 ```{python}
 # Import all libraries used
@@ -54,7 +54,7 @@ From the above quick statistical summary and also the code below to find the min
 dtree_df["Ki"].min()
 ```
 
-Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nM units was: 
+Now we could convert the Ki values to pKi values, which were the negative logs of Ki in molar units (a [PubChem example](https://pubchem.ncbi.nlm.nih.gov/bioassay/213088) might help to explain it a little further). The key to understand pKi here was to treat pKi similarly to how we would normally understand pH for our acids and bases. The formula to convert Ki to pKi for nanomolar (nM) units was: 
 
 $$
 \text{pKi} = 9 - log _{10}(Ki)
@@ -82,28 +82,30 @@ The dataframe would now look like this, with a new pKi column.
 dtree_df.head()
 ```
 
-However, for a decision tree model, a few more molecular descriptors were probably needed rather than only Ki or pKi and SMILES... One way to do this could be through computations based on canonical SMILES of compounds by using RDKit to add some molecular descriptors.
+However, for a decision tree model, a few more molecular descriptors were probably needed rather than only Ki or pKi and SMILES. One way to do this could be through computations based on canonical SMILES of compounds by using RDKit to add some molecular descriptors.
 
-Before doing this, a compound sanitisation step would be the best before starting any calculations, as this might rule out some compounds with questionable chemical validities. This could also be done via RDKit or Datamol (a Python wrapper library built based on RDKit).
+Before doing this, a compound sanitisation step should be done before starting any calculations, as this might rule out some compounds with questionable chemical validities. RDKit or Datamol (a Python wrapper library built based on RDKit) was used in this process.
 
-I thought to convert the data types of the "smiles" and "data_validity_comment" columns to string first (in case of running into problems later).
+Also adding a quick step here to convert the data types of "smiles" and "data_validity_comment" columns to string first (in case of running into problems later).
 
 ```{python}
 dtree_df = dtree_df.astype({"smiles": "string", "data_validity_comment": "string"})
 dtree_df.dtypes
 ```
 
-Also, before jumping straight to compound sanitisation, I thought to check the "data_validity_comment" column.
+Also, before jumping straight to compound sanitisation, I remembered that I needed to check the "data_validity_comment" column.
 
 ```{python}
 dtree_df["data_validity_comment"].unique()
 ```
 
-There were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant compounds with comments would need to be addressed first.
+There were 3 different types of data validity comments found, which were "NaN", "Outside typical range" and "Potential transcirption error". So, this meant compounds with comments other than "NaN" would need to be addressed first.
 
 ```{python}
 # Find out number of compounds with "outside typical range" as data validity comment
-dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"].shape
+dtree_df_err = dtree_df[dtree_df["data_validity_comment"] == "Outside typical range"]
+print(dtree_df_err.shape)
+dtree_df_err.head()
 ```
 
 There were a total of 58 compounds with Ki outside typical range.
@@ -113,9 +115,9 @@ There were a total of 58 compounds with Ki outside typical range.
 dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
 ```
 
-There were 1 compound with potential transcription errors for the Ki value.
+There was one compound with potential transcription errors for Ki value.
 
-These compounds with questionable Ki values were removed, as they could be potential sources of errors for ML models later on. One of the ways I thought of doing was to fill the empty cells under "data_validity_comment" column first, so it would be easier to filter them out.
+These compounds with questionable Ki values were removed, as they could be potential sources of errors for ML models later on (error trickling effect). One of the ways I thought of doing was to fill the empty cells within the "data_validity_comment" column first, so it would be easier to filter them out.
 
 ```{python}
 # Fill "NaN" entries with an actual name e.g. zero
@@ -141,7 +143,7 @@ dtree_df["data_validity_comment"].unique()
 
 #### **Compound sanitisation**
 
-I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided by Datamol in the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained to a certain degree in the link provided above. I guess the key was to select pre-processing options required to fit the purpose of the ML models being built later on, and more experiences in doing this would also help to improve the compound pre-processing step.
+I've found the [pre-processing molecules tutorial](https://docs.datamol.io/stable/tutorials/Preprocessing.html) and its reference links provided by Datamol in the webpage to be very informative. Each steps of fix_mol(), sanitize_mol() and standardize_mol() were explained in the link provided above. I guess the key was to select pre-processing options required to fit the purpose of the ML models being built later on, and more experiences in doing this would also help to improve the compound pre-processing step.
 
 ```{python}
 # _preprocess function to sanitise compounds - adapted from datamol.io
@@ -160,10 +162,11 @@ def _preprocess(row):
     # Standardise the molecules
     mol = dm.standardize_mol(
         mol,
-        disconnect_metals=False,
+        # Switch on to disconnect metal ions
+        disconnect_metals=True,
         normalize=True,
         reionize=True,
-        # Decided to switch on "uncharge" to neutralise charges - the only change
+        # Switch on "uncharge" to neutralise charges
         uncharge=True,
         # Taking care of stereochemistries of compounds
         stereo=True,
@@ -215,7 +218,7 @@ Plotting a histogram to see the distribution of pKi values first.
 dtree_san_df.hist(column = "pKi")
 ```
 
-I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset being used here (dtree_san_df) might not fit the requirements, which were:
+I read a bit about Dixon's Q test and realised that there were a few required assumptions prior to using this test, and the current dataset used here (dtree_san_df) might not fit the requirements, which were:
 
 -   normally distributed data
 -   a small sample size e.g. between 3 and 10, which was originally stated in this paper [@dean1951].

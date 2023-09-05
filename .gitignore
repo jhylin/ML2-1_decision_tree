@@ -1,9 +1,6 @@
-/demo_chembl_web_resource_client.html
 /demo_chembl_web_resource_client.ipynb
-/demo_chembl_web_resource_client_files
 /py3.9venv
 .DS_Store
-Data_prep_polars.qmd
 /.luarc.json
 Data_prep_1_files
 Data_prep_2_files
