@@ -239,4 +239,8 @@ I also used Pandas' built-in boxplot in addition to the histogram to show the po
 
 #### **Molecular descriptors**
 
-To be continued.
+Datamol's molecular descriptors code - check documentations
+
+```{python}
+dm.descriptors.batch_compute_many_descriptors()
+```
