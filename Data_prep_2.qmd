@@ -23,6 +23,8 @@ import pandas as pd
 import math
 from rdkit.Chem import Descriptors
 import datamol as dm
+# tqdm library was used within datamol's batch descriptor code
+from tqdm import tqdm
 ```
 
 <br>
