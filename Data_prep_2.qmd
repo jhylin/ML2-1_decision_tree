@@ -239,19 +239,32 @@ I also used Pandas' built-in boxplot in addition to the histogram to show the po
 
 #### **Molecular descriptors**
 
-Check references:
-TeachOpenCadd T002
-Chemistry Libretexts
-RDKit docs - descriptors
-Datamol's molecular descriptors code - check documentations
-Useful blog posts by P. Zin
-Check blog posts by P. Walters & G. Landrum?
+I've explored a few different ways to compute molecular descriptors, essentially RDKit was used as the main library to do this. A [blog post](https://drzinph.com/rdkit_2d-descriptors-in-python-part-4/) I've come across on calculating RDKit 2D molecular descriptors has explained it well, it gave details about how to bundle the functions together in a class (the idea of building a small library yourself to use in projects, which were quite handy). I've also read into RDKit's documentations and also the ones from Datamol. Rather than re-inventing the wheels as there were already several really well-explained blog posts about this, I'd probably opt for Datamol since it was relatively new to me.
 
-To consider:
-0D - 2D descriptors or only 2D?
-Likely not going to use fingerprints yet?
+With the lastest format of the dtree_san_df, it already included a RDKit molecule column (named "rdkit_mol"), so this meant I could go ahead with the calculations. Without jumping into Datamol directly, I just wanted to try out RDKit's code first. There was also a useful [descriptor calculation tutorial](https://greglandrum.github.io/rdkit-blog/posts/2022-12-23-descriptor-tutorial.html) written by Greg Landrum about this.
 
 ```{python}
-# Datamol sample descriptor code to create mol descriptors for batch compounds
+# Saving the RDKit mol column as an object
+mols = dtree_san_df["rdkit_mol"]
+mols
+```
+
+```{python}
+# Import descriptor module
+from rdkit.Chem import Descriptors
+
+# Run descriptor calculations on mols object
+# then save as a new list
+mol_ls = [Descriptors.CalcMolDescriptors(mol) for mol in mols]
+# Convert the list into a dataframe
+df_2d = pd.DataFrame(mol_ls)
+df_2d.head()
+print(df_2d.shape)
+```
+
+In total, it generated 209 descriptors. Then I tested Datamol's code on this.
+
+```{python}
+# Datamol descriptor code for batch compounds
 dm.descriptors.batch_compute_many_descriptors()
 ```

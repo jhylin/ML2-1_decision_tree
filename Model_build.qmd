@@ -1,0 +1,23 @@
+---
+title: "Tree models in ChEMBL data"
+subtitle: "ML series 2.1 - decision tree - model building"
+author: Jennifer HY Lin
+date: '2023-9-6'
+draft: true
+categories: 
+    - Machine learning projects
+    - Pandas
+    - Scikit-learn
+    - ChEMBL database
+jupyter: python3
+format: html
+bibliography: references.bib
+---
+
+##### **Model building**
+
+Rough plans:
+
+Estimate impact of experimental error (on Ki values) on correlation & estimate maximum possible correlation achieved with the selected dataset
+
+Set up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
