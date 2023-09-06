@@ -2,7 +2,7 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - decision tree - data pre-processing (part 2)"
 author: Jennifer HY Lin
-date: '2023-9-5'
+date: '2023-9-6'
 draft: true
 categories: 
     - Machine learning projects
@@ -21,6 +21,7 @@ The data used in part 2 of data pre-processing was extracted from ChEMBL databas
 # Import all libraries used
 import pandas as pd
 import math
+from rdkit.Chem import Descriptors
 import datamol as dm
 ```
 
@@ -245,26 +246,32 @@ With the lastest format of the dtree_san_df, it already included a RDKit molecul
 
 ```{python}
 # Saving the RDKit mol column as an object
-mols = dtree_san_df["rdkit_mol"]
-mols
-```
-
-```{python}
-# Import descriptor module
-from rdkit.Chem import Descriptors
+mols_rdkit = dtree_san_df["rdkit_mol"]
+mols_rdkit
 
 # Run descriptor calculations on mols object
-# then save as a new list
-mol_ls = [Descriptors.CalcMolDescriptors(mol) for mol in mols]
+# and save as a new list
+mol_ls = [Descriptors.CalcMolDescriptors(mol) for mol in mols_rdkit]
+
 # Convert the list into a dataframe
-df_2d = pd.DataFrame(mol_ls)
-df_2d.head()
-print(df_2d.shape)
+df_rdkit_2d = pd.DataFrame(mol_ls)
+print(df_rdkit_2d.shape)
+df_rdkit_2d.head()
 ```
 
-In total, it generated 209 descriptors. Then I tested Datamol's code on this.
+In total, it generated 209 descriptors. Then I tested Datamol's code on this as shown below.
 
 ```{python}
-# Datamol descriptor code for batch compounds
-dm.descriptors.batch_compute_many_descriptors()
+# Convert RDKit molecule column into list
+mols_dm = dtree_san_df["rdkit_mol"]
+
+# Datamol's batch descriptor code for a list of compounds
+dtree_san_df_dm = dm.descriptors.batch_compute_many_descriptors(mols_dm)
+dtree_san_df_dm.head()
 ```
+
+There were a total of 22 molecular descriptors generated, which seemed more like what I might use for the decision tree model.
+
+*To be continued*
+
+Merge dataframes?
