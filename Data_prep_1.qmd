@@ -1,8 +1,8 @@
 ---
-title: "Tree models in ChEMBL data"
-subtitle: "ML series 2.1 - decision tree - data pre-processing (part 1)"
+title: "Decision tree"
+subtitle: "ML series 2.1 - data pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-9-6'
+date: '2023-9-7'
 draft: true
 categories: 
     - Machine learning projects
@@ -442,11 +442,9 @@ dtree_df = pd.merge(
 dtree_df.head()
 ```
 
-Row indices were reset and shape of the final dataframe was checked.
+Shape of the final dataframe was checked.
 
 ```{python}
-dtree_df.reset_index(drop = True, inplace = True)
-
 print(dtree_df.shape)
 ```
 
