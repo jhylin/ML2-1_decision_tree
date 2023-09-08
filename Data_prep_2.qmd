@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - data pre-processing (part 2)"
 author: Jennifer HY Lin
-date: '2023-9-7'
+date: '2023-9-8'
 draft: true
 categories: 
     - Machine learning projects
@@ -252,7 +252,7 @@ I also used Pandas' built-in boxplot in addition to the histogram to show the po
 
 <br>
 
-#### **Calculate molecular descriptors**
+#### **Calculate RDKit 2D molecular descriptors**
 
 I've explored a few different ways to compute molecular descriptors, essentially RDKit was used as the main library to do this. A [blog post](https://drzinph.com/rdkit_2d-descriptors-in-python-part-4/) I've come across on calculating RDKit 2D molecular descriptors has explained it well, it gave details about how to bundle the functions together in a class (the idea of building a small library yourself to use in projects, which were quite handy). I've also read into RDKit's documentations and also the ones from Datamol. Rather than re-inventing the wheels as there were already several really well-explained blog posts about this, I'd probably opt for Datamol since it was relatively new to me.
 
@@ -308,9 +308,9 @@ dtree_san_df_dm.columns
 The trickier part for this second-half of data pre-processing actually lied here -
 merging/joining/concatenating dataframes of the pre-processed dataframe (dtree_san_df) and Datamol's descriptor code (dtree_san_df_dm). 
 
-Initially, I tried using all of Pandas' code of merge/join/concat dataframes. They all failed to create the correct final combined dataframe since there were too many rows, with one run actually creating 540 rows! (maximum should be 481 rows). So I looked into different ways, and since there were no other common column for both dataframes, the index column was the only one that correlate both.
+Initially, I tried using all of Pandas' code of merge/join/concat dataframes. They all failed to create the correct final combined dataframe since there were too many rows, with one run actually created 540 rows (maximum should be 481 rows). One of the possible reasons for this could be that some of the descriptors had zeros generated as results for some of the compounds, and when combining using Pandas code like the ones mentioned here, they might cause unexpected results (as suggested by Pandas, they were not exactly equivalent to SQL joins). So I looked into different ways, and while there were no other common columns for both dataframes, the index column seemed to be the only one that correlated both.
 
-I also found out after going back to the previous steps that when I applied the compound pre-processing function from Datamol, the index of the resultant dataframe was changed to start from 1 (rather than zero). Because of this, I tried re-setting the index of dtree_san_df first, then drop the index column, followed by re-setting the index again to ensure it started at zero, and it worked. So that the dtree_san_df would have exactly the same index as dtree_san_df_dm.
+I also found out after going back to the previous steps that when I applied the compound pre-processing function from Datamol, the index of the resultant dataframe was changed to start from 1 (rather than zero). Because of this, I tried re-setting the index of dtree_san_df first, then dropped the index column, followed by re-setting the index again to ensure it started at zero, and this worked. So now the dtree_san_df would have exactly the same index as the one for dtree_san_df_dm.
 
 ```{python}
 # 1st index re-set
@@ -347,12 +347,15 @@ dtree_f_df = pd.merge(
 )
 ```
 
-Check final dataframe to make sure there were 481 rows and increased columns (combined numbers of columns from both dataframes). So this finally seemed to work.
+Check final dataframe to make sure there were 481 rows (index_x and index_y were identical) and increased number of columns (combined columns from both dataframes). So this finally seemed to work.
 
 ```{python}
 print(dtree_f_df.shape)
 dtree_f_df.head(10)
 ```
 
-
-
+TODOs:
+* Remove index_x & index_y
+* Add subsection: Data pre-processing reflections
+- order of steps could be changed in a more logical order
+- checklist of things to do during data pre-processing (refer to note)
