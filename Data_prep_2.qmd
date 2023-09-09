@@ -361,7 +361,7 @@ dtree_f_df.head()
 
 TODOs:
 
-##### ** Data pre-processing reflections**
+##### **Data pre-processing reflections**
 
 In general, the order of steps could be changed in a more logical order when I looked back at what I did.
 
@@ -372,20 +372,23 @@ In general, the order of steps could be changed in a more logical order when I l
 *Please note this list was not exhaustive as this was only a suggestion from my experience working on this post*
 
 Molecular data pre-processing:
+
 - duplicates
 - missing values
 - salts or mixture
 
 Consistency of structural annotations:
+
 - molecular validity
 - molecular sanity
 - charge standardisation
 - stereochemistry
 
 Reliability of reported experimental values (e.g. activity values like IC50, Ki, EC50 etc.):
+
 - annotated validity (data_validity_comment)
 - presence of outliers
 - confidence score (assays)
 - standard deviation of multiple entries (if applicable)
 
-- Compute 2D molecular descriptors
+Compute 2D molecular descriptors
