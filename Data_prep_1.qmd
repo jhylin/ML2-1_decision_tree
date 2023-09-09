@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - data pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-9-7'
+date: '2023-9-9'
 draft: true
 categories: 
     - Machine learning projects
@@ -343,13 +343,22 @@ assays_df[assays_df["confidence_score"] == 8]
 ##### **Combine bioactivity & assay data**
 
 ```{python}
-# dtree_df = pd.merge(
-#     bioact_df[["molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
-#     cpds_df,
-#     on = "molecule_chembl_id",
-# )
+bioact_assay_df = pd.merge(
+    bioact_df[["assay_chembl_id", "molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
+    assays_df,
+    on = "assay_chembl_id",
+)
+print(bioact_assay_df.shape)
+bioact_assay_df.head()
 ```
 
+```{python}
+# 493 cpds with confidence score of 9
+# Limited bioact_assay_df to cpds with conf score of 9 only
+bioact_assay_df = bioact_assay_df[bioact_assay_df["confidence_score"] == 9]
+print(bioact_assay_df.shape)
+bioact_assay_df.head()
+```
 
 <br>
 
@@ -397,7 +406,7 @@ cpds_df.head()
 Removing any missing entries in the compound data.
 
 ```{python}
-cpds_df.dropna(axis = 0, how = "any", inplace = True)
+cpds_df.dropna(subset = ["molecule_chembl_id", "molecule_structures"], axis = 0, how = "any", inplace = True)
 
 # Check columns & rows in df
 cpds_df.shape
@@ -453,7 +462,7 @@ cpds_df.drop("molecule_structures", axis = 1, inplace = True)
 Finally, adding another step to ensure all missing entries or entries without canonical SMILES strings were removed from the compound dataset.
 
 ```{python}
-cpds_df.dropna(axis = 0, how = "any", inplace = True)
+cpds_df.dropna(subset = ["smiles"], axis = 0, how = "any", inplace = True)
 
 print(cpds_df.shape)
 ```
@@ -473,7 +482,7 @@ To combine both datasets, the key was to look for common column (similar to a SQ
 Listing all the column names for both datasets would show the common column.
 
 ```{python}
-bioact_df.columns
+bioact_assay_df.columns
 ```
 
 ```{python}
@@ -487,7 +496,7 @@ The next step was to combine or merge both datasets.
 ```{python}
 # Create a final dataframe that will contain both bioactivity and compound data
 dtree_df = pd.merge(
-    bioact_df[["molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
+    bioact_assay_df[["molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
     cpds_df,
     on = "molecule_chembl_id",
 )
