@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - data pre-processing (part 2)"
 author: Jennifer HY Lin
-date: '2023-9-8'
+date: '2023-9-9'
 draft: true
 categories: 
     - Machine learning projects
@@ -25,6 +25,7 @@ from rdkit.Chem import Descriptors
 import datamol as dm
 # tqdm library used in datamol's batch descriptor code
 from tqdm import tqdm
+import mols2grid
 ```
 
 <br>
@@ -223,6 +224,16 @@ dtree_san_df.shape
 
 In this case, I tried using the preprocessing function without adding the parallelisation, the whole sanitisation process wasn't very long (since I had a small dataset), and was done within a minute or so.
 
+Also as a sanity check on the sanitised compounds in dtree_san_df, I just wanted to see if I could parse all compounds in this dataframe (if not, something was obviously wrong and needed to be re-checked before proceeding to next step).
+
+```{python}
+# Create a list to store all cpds in dtree_san_df
+mol_list = dtree_san_df["rdkit_mol"]
+mol_list = list(mol_list)
+type(mol_list)
+mols2grid.display(mol_list, n_cols = 5)
+```
+
 <br>
 
 #### **Detect outliers**
@@ -263,16 +274,12 @@ With the lastest format of the dtree_san_df, it already included a RDKit molecul
 This was just one of the code examples in RDKit as there could be more variations of this depending on needs.
 
 ```{python}
-# Saving the RDKit mol column as an object
-mols_rdkit = dtree_san_df["rdkit_mol"]
-mols_rdkit
-
-# Run descriptor calculations on mols object
+# Run descriptor calculations on mol_list
 # and save as a new list
-mol_ls = [Descriptors.CalcMolDescriptors(mol) for mol in mols_rdkit]
+mol_rdkit_ls = [Descriptors.CalcMolDescriptors(mol) for mol in mol_list]
 
 # Convert the list into a dataframe
-df_rdkit_2d = pd.DataFrame(mol_ls)
+df_rdkit_2d = pd.DataFrame(mol_rdkit_ls)
 print(df_rdkit_2d.shape)
 df_rdkit_2d.head()
 ```
@@ -286,11 +293,8 @@ In total, it generated 209 descriptors.
 Then I tested Datamol's code on this as shown below.
 
 ```{python}
-# Convert RDKit molecule column into list
-mols_dm = dtree_san_df["rdkit_mol"]
-
 # Datamol's batch descriptor code for a list of compounds
-dtree_san_df_dm = dm.descriptors.batch_compute_many_descriptors(mols_dm)
+dtree_san_df_dm = dm.descriptors.batch_compute_many_descriptors(mol_list)
 print(dtree_san_df_dm.shape)
 dtree_san_df_dm.head()
 ```
