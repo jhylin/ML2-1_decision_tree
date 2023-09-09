@@ -63,6 +63,9 @@ targets_api = new_client.target
 # for bioactivities
 bioact_api = new_client.activity
 
+# for assays
+assay_api = new_client.assay
+
 # for compounds
 cpd_api = new_client.molecule
 ```
@@ -145,7 +148,7 @@ bioact = bioact_api.filter(
     "relation",
     "standard_value",
     "target_chembl_id",
-    "target_organism",
+    "target_organism"
 )
 
 # Check the length and type of bioactivities object
@@ -301,6 +304,55 @@ There were a total of 12 columns with 540 rows of data left in the bioactivity d
 
 <br>
 
+##### **Fetching assay data**
+
+Particularly on confidence scores for assays used (assay-to-target relationships). This [link from ChEMBL](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/chembl-data-questions#what-is-the-confidence-score) explained this further.
+
+```{python}
+assays = assay_api.filter(
+    # Use the previously saved target ChEMBL ID
+    target_chembl_id = chembl_id, 
+    # Binding assays only as before
+    assay_type = "B"
+).only(
+    "assay_chembl_id",
+    "confidence_score"
+)
+```
+
+```{python}
+assays_df = pd.DataFrame.from_dict(assays)
+
+print(assays_df.shape)
+assays_df.head()
+```
+
+```{python}
+assays_df.describe()
+```
+
+?Might consider filtering out the assays with confidence score of 8 (when reaching the final dataframe)
+
+```{python}
+# Some had score of 8 - find out which ones
+assays_df[assays_df["confidence_score"] == 8]
+```
+
+<br>
+
+##### **Combine bioactivity & assay data**
+
+```{python}
+# dtree_df = pd.merge(
+#     bioact_df[["molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
+#     cpds_df,
+#     on = "molecule_chembl_id",
+# )
+```
+
+
+<br>
+
 ##### **Fetching compound data**
 
 While having identified the protein target and obtained the bioactivity data, this step was to link the bioactivity data to the compound data.
@@ -312,7 +364,8 @@ cpds = cpd_api.filter(
     molecule_chembl_id__in = list(bioact_df["molecule_chembl_id"])
 ).only(
     "molecule_chembl_id",
-    "molecule_structures"
+    "molecule_structures",
+    "max_phase"
 )
 ```
 
