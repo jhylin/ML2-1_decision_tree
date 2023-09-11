@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - data pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-9-10'
+date: '2023-9-11'
 draft: true
 categories: 
     - Machine learning projects
@@ -307,7 +307,7 @@ There were a total of 12 columns with 540 rows of data left in the bioactivity d
 
 ##### **Fetching assay data**
 
-Particularly on confidence scores for assays used (assay-to-target relationships). This [link from ChEMBL](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/chembl-data-questions#what-is-the-confidence-score) explained this further.
+The assay data was added after I went through the rest of the data_preprocessing, as I thought to check on the confidence scores for assays used in the final data collected (to assess assay-to-target relationships). This [link from ChEMBL](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/chembl-data-questions#what-is-the-confidence-score) explained what the confidence score meant.
 
 ```{python}
 assays = assay_api.filter(
@@ -321,6 +321,8 @@ assays = assay_api.filter(
 )
 ```
 
+Placing the fetched assay data into a Pandas DataFrame.
+
 ```{python}
 assays_df = pd.DataFrame.from_dict(assays)
 
@@ -332,7 +334,7 @@ assays_df.head()
 assays_df.describe()
 ```
 
-?Might consider filtering out the assays with confidence score of 8 (when reaching the final dataframe)
+It looked like the lowest confidence score for this particular protein target in binding assays was at 8, with others sitting at 9 (the highest). There were 452 assays with confidence score of 8.
 
 ```{python}
 # Some had score of 8 - find out which ones
@@ -343,6 +345,8 @@ assays_df[assays_df["confidence_score"] == 8]
 
 ##### **Combine bioactivity & assay data**
 
+The key was to combine the bioactivity and assay data along the assay_chembl_id column.
+
 ```{python}
 bioact_assay_df = pd.merge(
     bioact_df[["assay_chembl_id", "molecule_chembl_id", "Ki", "units", "data_validity_comment"]],
@@ -352,6 +356,8 @@ bioact_assay_df = pd.merge(
 print(bioact_assay_df.shape)
 bioact_assay_df.head()
 ```
+
+Then I limited the data to be only with confidence score of 9.
 
 ```{python}
 # 493 cpds with confidence score of 9
@@ -365,9 +371,7 @@ bioact_assay_df.head()
 
 ##### **Fetching compound data**
 
-While having identified the protein target and obtained the bioactivity data, this step was to link the bioactivity data to the compound data.
-
-This could be done by having the ChEMBL IDs available for the compounds in the bioactivity dataset.
+While having identified the protein target and obtained the bioactivity data, along with assay data, this step was to link the bioactivity data to the compound data. This could be done by having the ChEMBL IDs available in the bioactivity dataset.
 
 ```{python}
 cpds = cpd_api.filter(
@@ -404,7 +408,7 @@ cpds_df.head()
 
 ###### **Pre-process compound data**
 
-Removing any missing entries in the compound data.
+Removing any missing entries in the compound data (excluding the "max_phase" column as I might be doing something about it during the training/testing split part in the upcoming model building post - note: "None" entries likely meant they were preclinical molecules so not assigned with a max phase yet).
 
 ```{python}
 cpds_df.dropna(subset = ["molecule_chembl_id", "molecule_structures"], axis = 0, how = "any", inplace = True)

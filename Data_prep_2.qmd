@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - data pre-processing (part 2)"
 author: Jennifer HY Lin
-date: '2023-9-10'
+date: '2023-9-11'
 draft: true
 categories: 
     - Machine learning projects
@@ -252,7 +252,7 @@ dtree_san_df.shape
 
 In this case, I tried using the preprocessing function without adding parallelisation, the whole process wasn't very long (since I had a small dataset), and was done within a minute or so.
 
-Also, as a sanity check on the sanitised compounds in dtree_san_df, I just wanted to see if I could display all compounds in this dataframe as 2D images.
+Also, as a sanity check on the sanitised compounds in dtree_san_df, I just wanted to see if I could display all compounds in this dataframe as 2D images. I also had a look through each page just to see if there were any odd bonds or anything strange in general.
 
 ```{python}
 # Create a list to store all cpds in dtree_san_df
@@ -299,6 +299,8 @@ I also used Pandas' built-in boxplot in addition to the histogram to show the po
 I've explored a few different ways to compute molecular descriptors, essentially RDKit was used as the main library to do this (there might be other options via other programming languages, but I was only exploring RDKit-based methods via Python). A [blog post](https://drzinph.com/rdkit_2d-descriptors-in-python-part-4/) I've come across on calculating RDKit 2D molecular descriptors has explained it well, it gave details about how to bundle the functions together in a class (the idea of building a small library yourself to use in projects, which were quite handy). I've also read into RDKit's documentations and also the ones from Datamol. Rather than re-inventing the wheels as there were already several really well-explained blog posts about this, I'd probably opt for Datamol since it was relatively new to me.
 
 With the lastest format of the dtree_san_df, it already included a RDKit molecule column (named "rdkit_mol"), so this meant I could go ahead with the calculations. Without jumping into Datamol directly, I just wanted to try out RDKit's code first. There was also a useful [descriptor calculation tutorial](https://greglandrum.github.io/rdkit-blog/posts/2022-12-23-descriptor-tutorial.html) written by Greg Landrum about this.
+
+<br>
 
 ###### **RDKit code**
 
@@ -395,6 +397,12 @@ The two index columns ("index_x" and "index_y") were removed, which brought forw
 # Remove index_x & index_y
 dtree_f_df.drop(["index_x", "index_y"], axis = 1, inplace = True)
 dtree_f_df.head()
+```
+
+I then saved this pre-processed dataframe as another file in my working directory, so that it could be used for estimating experimental error and model building in the next post.
+
+```{python}
+dtree_f_df.to_csv("ache_2d_chembl.csv")
 ```
 
 <br>
