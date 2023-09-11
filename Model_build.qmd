@@ -2,7 +2,7 @@
 title: "Tree models in ChEMBL data"
 subtitle: "ML series 2.1 - decision tree - model building"
 author: Jennifer HY Lin
-date: '2023-9-6'
+date: '2023-9-11'
 draft: true
 categories: 
     - Machine learning projects
@@ -14,10 +14,64 @@ format: html
 bibliography: references.bib
 ---
 
+##### **Estimate experimental errors**
+
+This part was about estimating the impact of experimental error, which in this case would be on pKi values, on prediction correlation from the machine learning (ML) model. The other thing was to also estimate the maximum possible correlation that could be achieved with the dataset retrieved and pre-processed from the previous posts. 
+
+This step was highly inspired by P. Walters posts, which have discussed about estimating errors for experimental data with code available as mentioned in these posts:
+
+- [How Good Could (Should) My Models Be?](http://practicalcheminformatics.blogspot.com/2019/07/how-good-could-should-my-models-be.html)
+
+- [Getting Real with Molecular Property Prediction](http://practicalcheminformatics.blogspot.com/2023/06/getting-real-with-molecular-property.html) (under subsection of "How Well Should We Be Able to Model the Data?")
+
+To get started, all the requried libraries were loaded as below.
+
+```{python}
+import pandas as pd
+import numpy as np
+import math
+from sklearn.metrics import r2_score
+import seaborn as sb
+import tqdm as tqdm
+```
+
+Imported the pre-process data from previous post.
+
+```{python}
+# Import data
+dtree = pd.read_csv("ache_2d_chembl.csv")
+dtree.drop(columns = ["Unnamed: 0"], inplace=True)
+dtree.head()
+```
+
+Concentrating on the pKi column, as this was from lab experiments collected across different scientific literatures or from other sources as stated in ChEMBL, and also the value that might be subjected potential experimental errors.
+
+```{python}
+# Save exp data (pKi) as an object
+data = dtree["pKi"]
+# Save the object as a list
+data_ls = [data]
+
+# Trial 3-, 5- & 10-fold errors
+for fold in (3, 5, 10):
+    # Retrieve random error samples from a normal distribution
+    # Bewteen 0 and log10 of number-fold 
+    # for the length of provided data only
+    error = np.random.normal(0, np.log10(fold), len(data))
+    data_ls.append(error + data)
+
+# Convert data_ls to df
+dtree_err = pd.DataFrame(data_ls)
+# Re-align dataframe
+dtree_err = dtree_err.transpose()
+# Rename columns
+dtree_err.columns = ["pKi", "3-fold", "5-fold", "10-fold"]
+dtree_err.head()
+```
+
+Some plots to follow.
+
+
 ##### **Model building**
-
-Rough plans:
-
-Estimate impact of experimental error (on Ki values) on correlation & estimate maximum possible correlation achieved with the selected dataset
 
 Set up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
