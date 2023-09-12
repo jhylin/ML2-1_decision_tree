@@ -16,11 +16,11 @@ bibliography: references.bib
 
 ##### **Estimate experimental errors**
 
-This part was about estimating the impact of experimental error, which in this case would be on pKi values, on prediction correlation from the machine learning (ML) model. The other thing was to also estimate the maximum possible correlation that could be achieved with the dataset retrieved and pre-processed from the previous posts. 
+This part was about estimating the impact of experimental errors (pKi values) on predictive machine learning (ML) models. It was also needed to estimate the maximum possible correlation that could be drawn with the dataset used and pre-processed from the previous two posts. 
 
-This step was highly inspired by P. Walters posts, which have discussed about estimating errors for experimental data with code available as mentioned in these posts:
+This subsection was highly inspired by P. Walters posts, which have discussed about estimating errors for experimental data with code links available in these posts:
 
-- [How Good Could (Should) My Models Be?](http://practicalcheminformatics.blogspot.com/2019/07/how-good-could-should-my-models-be.html)
+- [How Good Could (Should) My Models Be?](http://practicalcheminformatics.blogspot.com/2019/07/how-good-could-should-my-models-be.html) *reference paper*
 
 - [Getting Real with Molecular Property Prediction](http://practicalcheminformatics.blogspot.com/2023/06/getting-real-with-molecular-property.html) (under subsection of "How Well Should We Be Able to Model the Data?")
 
@@ -31,9 +31,7 @@ import pandas as pd
 import numpy as np
 import math
 from sklearn.metrics import r2_score
-from scipy.stats import pearsonr
 import seaborn as sb
-import tqdm as tqdm
 ```
 
 Imported the pre-process data from previous post.
@@ -45,7 +43,9 @@ dtree.drop(columns = ["Unnamed: 0"], inplace=True)
 dtree.head()
 ```
 
-Concentrating on the pKi column, which were usually derived from lab experiments collected across different scientific literatures or other sources as stated in ChEMBL, and also the value that might be subjected to potential experimental errors.
+The pKi column was being used in the code below, which were usually derived from lab experiments collected across different scientific literatures or other sources as stated in ChEMBL. The aim was to simulate pKi values with experimental errors added to them.
+
+*Code used for the rest of the subsection were adapted with thanks from P. Walters' "[maximum_correlation.ipynb](https://github.com/PatWalters/maximum_correlation/blob/master/maximum_correlation.ipynb)"*
 
 ```{python}
 # Save exp data (pKi) as an object
@@ -67,48 +67,71 @@ dtree_err = pd.DataFrame(data_ls)
 dtree_err = dtree_err.transpose()
 # Rename columns
 dtree_err.columns = ["pKi", "3-fold", "5-fold", "10-fold"]
+print(dtree_err.shape)
 dtree_err.head()
 ```
 
-Melting the created dtree_err for plotting.
+Melting the created dtree_err so it could be plotted later.
 
 ```{python}
 # Melt the dtree_err dataframe 
 # to make error values in one column (for plotting)
-dtree_err_melt = dtree_err.melt(id_vars="pKi")
+dtree_err_melt = dtree_err.melt(id_vars = "pKi")
+print(dtree_err_melt.shape)
 dtree_err_melt.head()
 ```
 
-Calculating Pearson correlation coefficient (R).
+Presenting this in regression plots.
 
 ```{python}
-# Create a new list for R values
-r_list = []
-# Append to the list the calculated R
-# for pKi and error values
-for k, v in dtree_err_melt.groupby("variable"):
-    r = pearsonr(v.pKi, v.value).statistic
-    label = f"r = {r:.02f}"
-    r_list.append(label)
+# variable = error-fold e.g. 3-fold
+# value = pKi value plus error
 
-r_list
+sb.set_theme(font_scale = 1.5)
+plot = sb.lmplot(
+    x = "pKi", 
+    y = "value", 
+    col = "variable", 
+    data = dtree_err_melt, 
+    scatter_kws = dict(alpha = 0.5, s = 15)
+    )
+title_list = ["3-fold", "5-fold", "10-fold"]
+for i in range(0, 3):
+    plot.axes[0, i].set_ylabel("pKi + error")
+    plot.axes[0, i].set_title(title_list[i])
 ```
 
-Preseting this in plots.
+Simulating the impact of error on the correlation between experimental pKi and also pKi with errors (3-fold, 5-fold and 10-fold). R^2^ calculated using [*scikit-learn*](https://scikit-learn.org/stable/modules/model_evaluation.html#r2-score) was introduced in the code below.
 
 ```{python}
-# sns.set_context('notebook')
-# g = sns.lmplot(x="val",y="err",col="sd",data=val_df, height=3,
-#            scatter_kws=dict(alpha=0.02, s=20, color='blue', edgecolors='white'))
-# g.set_xlabels("Experiment")
-# g.set_ylabels("Simulation")
-# for ax,label in zip(g.axes[0],label_list):
-#     ax.text(-6.5, -3, label)
+# Calculating r2 score (coefficient of determination) 
+# based on 1000 trials for each fold
+# note: data = dtree["pKi"]
 
+# Create an empty list for correlation
+cor_ls = []
+for fold in [3, 5, 10]:
+    # Set up 1000 trials
+    for i in range(0, 1000):
+        error = np.random.normal(0, np.log10(fold), len(data))
+        cor_ls.append([r2_score(data, data + error), f"{fold}-fold"])
 
-
+# Convert cor_ls into dataframe
+err_df = pd.DataFrame(cor_ls, columns = ["r2", "fold_error"])
+err_df.head()
 ```
 
+Plotting the R^2^ and fold-errors as violin plots.
+
+```{python}
+sb.set_theme(rc = {"figure.figsize": (9, 8)}, font_scale = 1.5)
+bplot = sb.violinplot(x = "fold_error", y = "r2", data = err_df)
+bplot.set(xlabel = "Fold error", ylabel = "R$^2$")
+```
+
+This definitely helped a lot in visualising the estimated errors in the experimental pKi curated in ChEMBL for this specific protein target (CHEMBL220), an acetylcholinesterase. The larger the error-fold, the lower the R^2^, and once the experimental error reached 10-fold, we could see an estimated R^2^ (maximum correlation) sitting below 0.55.
+
+<br>
 
 ##### **Model building**
 
