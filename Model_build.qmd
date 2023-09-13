@@ -47,7 +47,7 @@ dtree.head()
 dtree.columns
 ```
 
-The pKi column was being used in the code below as it contained the experimental values (from Ki measured), which were normally derived from countless lab experiments collected across different scientific literatures or other sources as stated in ChEMBL. The aim was to simulate pKi values with experimental errors added to them.
+The pKi column was used in the code below as it contained the experimental values (calculated from measured Ki values, usually derived from countless lab experiments) collected from different scientific literatures or other sources as stated in ChEMBL. The aim was to simulate pKi values with experimental errors added to them.
 
 *Code used for the rest of the subsection were adapted with thanks from Pat Walters' "[maximum_correlation.ipynb](https://github.com/PatWalters/maximum_correlation/blob/master/maximum_correlation.ipynb)" with my own added comments for further explanations*
 
@@ -136,24 +136,26 @@ Plotting the R^2^ and fold-errors as violin plots.
 
 ```{python}
 sb.set_theme(rc = {"figure.figsize": (9, 8)}, font_scale = 1.5)
-bplot = sb.violinplot(x = "fold_error", y = "r2", data = err_df)
-bplot.set(xlabel = "Fold error", ylabel = "R$^2$")
+vplot = sb.violinplot(x = "fold_error", y = "r2", data = err_df)
+vplot.set(xlabel = "Fold error", ylabel = "R$^2$")
 ```
 
-This definitely helped a lot with visualising the estimated errors for the experimental Ki values curated in ChEMBL for this specific protein target (CHEMBL220, acetylcholinesterase). The larger the error-fold, the lower the R^2^, and once the experimental error reached 10-fold, we could see an estimated R^2^ (maximum correlation) sitting below 0.55, which showed a poor correlation between the experimental pKi and experimental pKi plus simulated errors.
+This definitely helped a lot with visualising the estimated errors for the experimental Ki values curated in ChEMBL for this specific protein target (CHEMBL220, acetylcholinesterase). The larger the error-fold, the lower the R^2^, and once the experimental error reached 10-fold, we could see an estimated R^2^ (maximum correlation) with its median sitting below 0.55, indicating a likely poor predictive ML model if it was built based on these data with the estimated experimental errors.
 
 <br>
 
 ##### **Check max phase distribution**
-At this stage, I've planned to do training/testing split on compounds with max phase = 4 (i.e. they were likely prescriptions medications used in real-life, but I had a feeling this might further reduce the sample size even further).
+At this stage, I've planned to do training/testing split on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
 
-Max phases were assigned to each ChEMBL-curated compounds according to this [link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) under the answer for the question, "What is max phase?". Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in clinical trials or pending to be entered into clinical trials.
+Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in different phases of clinical trials or pending to be entered into clinical trials.
 
-Seeing the distributions of max phase assignments for all compounds in this collected and pre-processed dataset first.
+Checking out the distribution of max phase assignments for all compounds in this collected and pre-processed dataset first. 
 
 ```{python}
 dtree["max_phase"].describe()
 ```
+
+It was actually a very small number of compounds that were assigned with a number for max phase (total count of 10, which was unsurprising as there weren't many acetylcholinesterase inhibitors being used as prescription medications for dementia, with some well-known examples such as donepezil, galantamine and rivastigmine).
 
 Filling in actual "null" labels for all "NaN" rows in the "max_phase" columns.
 
@@ -168,13 +170,13 @@ Checking out the actual counts of each max phase category.
 dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
 ```
 
-Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. 
-
-This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from one single tree model.
+Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from a single tree model.
 
 <br>
 
 ##### **Model building**
+
+*work-in-progress*
 
 Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier().
 
