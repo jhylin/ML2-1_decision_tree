@@ -91,7 +91,7 @@ dtree_df.head(3)
 The distribution of Ki values were shown below via a simple statistical summary.
 
 ```{python}
-dtree_df.describe()
+dtree_df["Ki"].describe()
 ```
 
 From the above quick statistical summary and also the code below to find the minimum Ki value, it confirmed there were no zero Ki values recorded.
@@ -166,7 +166,7 @@ There were a total of 51 compounds with Ki outside typical range. These compound
 
 ```{python}
 # Fill "NaN" entries with an actual name e.g. none
-dtree_df = dtree_df.fillna("none")
+dtree_df["data_validity_comment"].fillna("none", inplace=True)
 dtree_df.head()
 ```
 

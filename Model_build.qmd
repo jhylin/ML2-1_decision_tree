@@ -144,9 +144,35 @@ This definitely helped a lot with visualising the estimated errors for the exper
 
 <br>
 
+##### **Check max phase distribution**
+At this stage, I've planned to do training/testing split on compounds with max phase = 4 (i.e. they were likely prescriptions medications used in real-life, but I had a feeling this might further reduce the sample size even further).
+
+Max phases were assigned to each ChEMBL-curated compounds according to this [link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) under the answer for the question, "What is max phase?". Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in clinical trials or pending to be entered into clinical trials.
+
+Seeing the distributions of max phase assignments for all compounds in this collected and pre-processed dataset first.
+
+```{python}
+dtree["max_phase"].describe()
+```
+
+Filling in actual "null" labels for all "NaN" rows in the "max_phase" columns.
+
+```{python}
+dtree["max_phase"].fillna("null", inplace=True)
+dtree.head()
+```
+
+Checking out the actual counts of each max phase category.
+
+```{python}
+dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
+```
+
+Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get.
+
+<br>
+
 ##### **Model building**
 
-Set up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
+Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
 
-
-- Training/testing split on compounds with max phase = 4 (Rx meds reflecting real-life use, but likely reduces the sample size even further)
