@@ -168,11 +168,36 @@ Checking out the actual counts of each max phase category.
 dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
 ```
 
-Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get.
+Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. 
+
+This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from one single tree model.
 
 <br>
 
 ##### **Model building**
 
-Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
+Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier().
+
+```{python}
+dtree.columns
+```
+
+```{python}
+# Define features/predictors
+X = dtree[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
+
+X
+```
+
+```{python}
+# Define target/outcome
+y = dtree['pKi']
+
+y
+```
+
+```{python}
+# Convert X & y to numpy arrays
+```
+
 
