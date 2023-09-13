@@ -6,6 +6,7 @@ date: '2023-9-11'
 draft: true
 categories: 
     - Machine learning projects
+    - Data preprocessing
     - Tree models
     - Pandas
     - ChEMBL database
@@ -377,7 +378,7 @@ Merged both dataframes of dtree_san_df and dtree_san_df_dm based on both of thei
 ```{python}
 # merge dtree_san_df & dtree_san_df_dm
 dtree_f_df = pd.merge(
-    dtree_san_df[["index", "molecule_chembl_id", "pKi"]],
+    dtree_san_df[["index", "molecule_chembl_id", "pKi", "max_phase"]],
     dtree_san_df_dm,
     left_index=True,
     right_index=True

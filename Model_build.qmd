@@ -2,10 +2,11 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - model building"
 author: Jennifer HY Lin
-date: '2023-9-12'
+date: '2023-9-13'
 draft: true
 categories: 
     - Machine learning projects
+    - Tree models
     - Pandas
     - Scikit-learn
     - ChEMBL database
@@ -40,6 +41,10 @@ Imported the pre-processed data from previous posts.
 dtree = pd.read_csv("ache_2d_chembl.csv")
 dtree.drop(columns = ["Unnamed: 0"], inplace=True)
 dtree.head()
+```
+
+```{python}
+dtree.columns
 ```
 
 The pKi column was being used in the code below as it contained the experimental values (from Ki measured), which were normally derived from countless lab experiments collected across different scientific literatures or other sources as stated in ChEMBL. The aim was to simulate pKi values with experimental errors added to them.
@@ -142,3 +147,6 @@ This definitely helped a lot with visualising the estimated errors for the exper
 ##### **Model building**
 
 Set up decision tree model using scikit-learn's tree.DecisionTreeClassifier() or tree.DecisionTreeRegressor() (for regression problems)
+
+
+- Training/testing split on compounds with max phase = 4 (Rx meds reflecting real-life use, but likely reduces the sample size even further)

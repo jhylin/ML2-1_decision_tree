@@ -6,6 +6,7 @@ date: '2023-9-11'
 draft: true
 categories: 
     - Machine learning projects
+    - Data preprocessing
     - Tree models
     - Pandas
     - ChEMBL database
