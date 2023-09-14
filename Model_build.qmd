@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - model building"
 author: Jennifer HY Lin
-date: '2023-9-13'
+date: '2023-9-14'
 draft: true
 categories: 
     - Machine learning projects
@@ -31,7 +31,7 @@ To get started, all the required libraries were loaded as below.
 import pandas as pd
 import numpy as np
 from sklearn.metrics import r2_score
-import seaborn as sb
+import seaborn as sns
 ```
 
 Imported the pre-processed data from previous posts.
@@ -96,8 +96,8 @@ warnings.filterwarnings("ignore")
 
 # variable = error-fold e.g. 3-fold
 # value = pKi value plus error
-sb.set_theme(font_scale = 1.5)
-plot = sb.lmplot(
+sns.set_theme(font_scale = 1.5)
+plot = sns.lmplot(
     x = "pKi", 
     y = "value", 
     col = "variable", 
@@ -135,8 +135,8 @@ err_df.head()
 Plotting the R^2^ and fold-errors as violin plots.
 
 ```{python}
-sb.set_theme(rc = {"figure.figsize": (9, 8)}, font_scale = 1.5)
-vplot = sb.violinplot(x = "fold_error", y = "r2", data = err_df)
+sns.set_theme(rc = {"figure.figsize": (9, 8)}, font_scale = 1.5)
+vplot = sns.violinplot(x = "fold_error", y = "r2", data = err_df)
 vplot.set(xlabel = "Fold error", ylabel = "R$^2$")
 ```
 
@@ -174,6 +174,18 @@ Unfortunately this has reduced the dataset even further if I opted to go for tra
 
 <br>
 
+##### **Sanity check on dtree df**
+
+Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it!
+
+```{python}
+dtree.dropna()
+print(dtree.shape)
+dtree.head()
+```
+
+<br>
+
 ##### **Model building**
 
 *work-in-progress*
@@ -194,12 +206,138 @@ X
 ```{python}
 # Define target/outcome
 y = dtree['pKi']
-
 y
 ```
 
 ```{python}
-# Convert X & y to numpy arrays
+# Convert X (features/predictors) to numpy array
+X = X.to_numpy()
+
+# Convert y (outcome/target)
+y = y.to_numpy()
+
+print(type(X))
+print(type(y))
+```
+```{python}
+# Check X is now an array
+X
+```
+
+```{python}
+y
+```
+
+```{python}
+from sklearn import tree
+# May need to reduce max_depth
+ache_tree_1 = tree.DecisionTreeRegressor(max_depth=2).fit(X, y)
+ache_tree_2 = tree.DecisionTreeRegressor(max_depth=4).fit(X, y)
+```
+
+```{python}
+tree.plot_tree(ache_tree_1)
+```
+
+```{python}
+tree.plot_tree(ache_tree_2)
+```
+
+<br>
+
+###### **Splitting dtree dataframe based on max phase**
+
+*Testing in progress*
+
+Fitting DecisionTreeRegressor() on X as dtree df with max phase of 4 (5 compounds).
+
+```{python}
+dtree.head()
+```
+
+```{python}
+# Compounds with max phase of 4
+dtree_mp4 = dtree[dtree["max_phase"] == 4]
+dtree_mp4
+```
+
+```{python}
+# Set X (features) for max phase 4 compounds
+X_mp4 = dtree_mp4[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
+X_mp4
+```
+
+```{python}
+# Convert X_mp4 to numpy array
+X_mp4 = X_mp4.to_numpy()
+X_mp4
+```
+
+```{python}
+y_mp4 = dtree_mp4["pKi"]
+y_mp4 = y_mp4.to_numpy()
+y_mp4
+```
+
+```{python}
+ache_tree_mp4_1 = tree.DecisionTreeRegressor(max_depth=2)
+ache_tree_mp4_1.fit(X_mp4, y_mp4)
+
+ache_tree_mp4_2 = tree.DecisionTreeRegressor(max_depth=5)
+ache_tree_mp4_2.fit(X_mp4, y_mp4)
+```
+
+```{python}
+tree.plot_tree(ache_tree_mp4_1)
+```
+
+```{python}
+tree.plot_tree(ache_tree_mp4_2)
+```
+
+```{python}
+# Compounds with max phase other than 4 (null to 3)
+# X_test
+dtree_mp_null = dtree[dtree["max_phase"] == "null"]
+print(dtree_mp_null.shape)
+dtree_mp_null.head() 
+```
+
+```{python}
+# Randomly sample 5 compounds from dtree_mp_null
+```
+
+```{python}
+X_mp_test = dtree_mp_null[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
+X_mp_test
+```
+
+```{python}
+# Convert dtree_mp to numpy array
+X_mp_test = X_mp_test.to_numpy()
+X_mp_test
+```
+
+```{python}
+y_1 = ache_tree_mp4_1.predict(X_mp_test)
+y_2 = ache_tree_mp4_2.predict(X_mp_test)
+```
+
+```{python}
+import matplotlib.pyplot as plt
+
+# plt.figure()
+# plt.scatter(X_mp4, y_mp4, s=20, edgecolors="black", c="darkred", label="data")
+
+# plt.plot(X_mp_test, y_1, color="cornflowerblue", label="max_depth=2", linewidth = 2)
+
+# plt.plot(X_mp_test, y_2, color="yellowgreen", label="max_depth=5", linewidth=2)
+
+# plt.xlabel("data")
+# plt.ylabel("target")
+# plt.title("Decision tree regression for AChE inhibitors from ChEMBL")
+# plt.legend()
+# plt.show()
 ```
 
 
