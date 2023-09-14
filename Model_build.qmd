@@ -145,6 +145,7 @@ This definitely helped a lot with visualising the estimated errors for the exper
 <br>
 
 ##### **Check max phase distribution**
+
 At this stage, I've planned to do training/testing split on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
 
 Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in different phases of clinical trials or pending to be entered into clinical trials.
@@ -305,10 +306,12 @@ dtree_mp_null.head()
 
 There were 432 compounds with max phase as "null".
 
-?quick EDA on these compounds to see distribution of pKi.
+TODOs:
+- ?quick EDA on these "null" compounds to see distribution of pKi.
+- random sampling
 
 ```{python}
-# Randomly sample 5 compounds from dtree_mp_null
+# Randomly sample 5 compounds from dtree_mp_null - pandas.DataFrame.sample
 
 
 ```
