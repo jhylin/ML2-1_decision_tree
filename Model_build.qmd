@@ -190,7 +190,7 @@ dtree.head()
 
 *work-in-progress*
 
-Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier().
+Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier() - this was on the full dataset of 442 compounds.
 
 ```{python}
 dtree.columns
@@ -249,7 +249,7 @@ tree.plot_tree(ache_tree_2)
 
 *Testing in progress*
 
-Fitting DecisionTreeRegressor() on X as dtree df with max phase of 4 (5 compounds).
+Fitting DecisionTreeRegressor() on X, y as dtree df with max phase of 4 (5 compounds) - meaning X_test will likely need to be this same sample size as well.
 
 ```{python}
 dtree.head()
@@ -303,8 +303,14 @@ print(dtree_mp_null.shape)
 dtree_mp_null.head() 
 ```
 
+There were 432 compounds with max phase as "null".
+
+?quick EDA on these compounds to see distribution of pKi.
+
 ```{python}
 # Randomly sample 5 compounds from dtree_mp_null
+
+
 ```
 
 ```{python}
