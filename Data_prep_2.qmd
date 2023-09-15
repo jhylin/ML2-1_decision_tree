@@ -1,6 +1,6 @@
 ---
 title: "Decision tree"
-subtitle: "ML series 2.1 - data pre-processing (part 2)"
+subtitle: "Series 2.1 - data pre-processing (part 2)"
 author: Jennifer HY Lin
 date: '2023-9-11'
 draft: true

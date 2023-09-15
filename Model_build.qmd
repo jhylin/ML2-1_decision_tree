@@ -1,6 +1,6 @@
 ---
 title: "Decision tree"
-subtitle: "ML series 2.1 - model building"
+subtitle: "Series 2.1 - model building"
 author: Jennifer HY Lin
 date: '2023-9-15'
 draft: true
@@ -189,7 +189,7 @@ dtree.head()
 
 *sample only for full dataset of 481 compounds - note: no training/testing data splits*
 
-Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier().
+Setting up decision tree model using scikit-learn's tree.DecisionTreeRegressor().
 
 ```{python}
 dtree.columns
@@ -238,9 +238,9 @@ tree.plot_tree(ache_tree, filled=True, rounded=True)
 
 ###### **Training data based on max phase of 4 compounds**
 
-I did a test-run on fitting a decision tree on the full dataset of 481 compounds. However, there were no training and testing data splits, so potentially the result might be not that useful. So here I wanted to split the collected data by spliting the compounds into two groups, where compounds with max phase of 4 would be the training data, and for the rest of the compounds with max phases of null to 3, would be my testing data.
+I did a test-run on fitting a decision tree on the full dataset of 481 compounds. However, there were no training and testing data splits, so potentially the result might be not that useful. So here I wanted to split the collected data by splitting the compounds into two groups based on their assigned max phases. Compounds with max phase of 4 would be the training data, and the rest of the compounds with max phases of null to 3 would be the testing data.
 
-Fitting the DecisionTreeRegressor() for compounds with max phase of 4, which should be 10 compounds in total(including donepezil and galantamine).
+Fitting the DecisionTreeRegressor() for compounds with max phase of 4 as shown below, which should really be only 10 compounds in total (including donepezil and galantamine).
 
 ```{python}
 # Create a df for compounds with max phase of 4
@@ -287,7 +287,7 @@ print(dtree_mp_null.shape)
 dtree_mp_null.head() 
 ```
 
-There were 466 compounds with max phase as "null".
+There were 466 compounds with max phase as "null", meaning they were pre-clinical compounds.
 
 ```{python}
 # Randomly sample 10 compounds from dtree_mp_null
