@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "ML series 2.1 - model building"
 author: Jennifer HY Lin
-date: '2023-9-14'
+date: '2023-9-15'
 draft: true
 categories: 
     - Machine learning projects
@@ -32,6 +32,8 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import r2_score
 import seaborn as sns
+from sklearn import tree
+from matplotlib import pyplot as plt
 ```
 
 Imported the pre-processed data from previous posts.
@@ -41,10 +43,6 @@ Imported the pre-processed data from previous posts.
 dtree = pd.read_csv("ache_2d_chembl.csv")
 dtree.drop(columns = ["Unnamed: 0"], inplace=True)
 dtree.head()
-```
-
-```{python}
-dtree.columns
 ```
 
 The pKi column was used in the code below as it contained the experimental values (calculated from measured Ki values, usually derived from countless lab experiments) collected from different scientific literatures or other sources as stated in ChEMBL. The aim was to simulate pKi values with experimental errors added to them.
@@ -146,7 +144,7 @@ This definitely helped a lot with visualising the estimated errors for the exper
 
 ##### **Check max phase distribution**
 
-At this stage, I've planned to do training/testing split on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
+At this stage, I've planned to do train on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
 
 Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in different phases of clinical trials or pending to be entered into clinical trials.
 
@@ -171,13 +169,13 @@ Checking out the actual counts of each max phase category.
 dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
 ```
 
-Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 442 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from a single tree model.
+Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 481 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from a single tree model.
 
 <br>
 
 ##### **Sanity check on dtree df**
 
-Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it!
+Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it.
 
 ```{python}
 dtree.dropna()
@@ -189,9 +187,9 @@ dtree.head()
 
 ##### **Model building**
 
-*work-in-progress*
+*sample only for full dataset of 481 compounds - note: no training/testing data splits*
 
-Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier() - this was on the full dataset of 442 compounds.
+Setting up decision tree model using scikit-learn's tree.DecisionTreeClassifier().
 
 ```{python}
 dtree.columns
@@ -216,10 +214,8 @@ X = X.to_numpy()
 
 # Convert y (outcome/target)
 y = y.to_numpy()
-
-print(type(X))
-print(type(y))
 ```
+
 ```{python}
 # Check X is now an array
 X
@@ -230,34 +226,24 @@ y
 ```
 
 ```{python}
-from sklearn import tree
 # May need to reduce max_depth
-ache_tree_1 = tree.DecisionTreeRegressor(max_depth=2).fit(X, y)
-ache_tree_2 = tree.DecisionTreeRegressor(max_depth=4).fit(X, y)
+ache_tree = tree.DecisionTreeRegressor(max_depth=3).fit(X, y)
 ```
 
 ```{python}
-tree.plot_tree(ache_tree_1)
-```
-
-```{python}
-tree.plot_tree(ache_tree_2)
+tree.plot_tree(ache_tree, filled=True, rounded=True)
 ```
 
 <br>
 
-###### **Splitting dtree dataframe based on max phase**
+###### **Training data based on max phase of 4 compounds**
 
-*Testing in progress*
+I did a test-run on fitting a decision tree on the full dataset of 481 compounds. However, there were no training and testing data splits, so potentially the result might be not that useful. So here I wanted to split the collected data by spliting the compounds into two groups, where compounds with max phase of 4 would be the training data, and for the rest of the compounds with max phases of null to 3, would be my testing data.
 
-Fitting DecisionTreeRegressor() on X, y as dtree df with max phase of 4 (5 compounds) - meaning X_test will likely need to be this same sample size as well.
-
-```{python}
-dtree.head()
-```
+Fitting the DecisionTreeRegressor() for compounds with max phase of 4, which should be 10 compounds in total(including donepezil and galantamine).
 
 ```{python}
-# Compounds with max phase of 4
+# Create a df for compounds with max phase of 4
 dtree_mp4 = dtree[dtree["max_phase"] == 4]
 dtree_mp4
 ```
@@ -265,36 +251,33 @@ dtree_mp4
 ```{python}
 # Set X (features) for max phase 4 compounds
 X_mp4 = dtree_mp4[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
-X_mp4
-```
 
-```{python}
 # Convert X_mp4 to numpy array
 X_mp4 = X_mp4.to_numpy()
 X_mp4
 ```
 
 ```{python}
+# Set y (target) for max phase 4 compounds
 y_mp4 = dtree_mp4["pKi"]
+
+# Convert y_mp4 to numpy array
 y_mp4 = y_mp4.to_numpy()
 y_mp4
 ```
 
 ```{python}
-ache_tree_mp4_1 = tree.DecisionTreeRegressor(max_depth=2)
-ache_tree_mp4_1.fit(X_mp4, y_mp4)
-
-ache_tree_mp4_2 = tree.DecisionTreeRegressor(max_depth=5)
-ache_tree_mp4_2.fit(X_mp4, y_mp4)
+ache_tree_mp4 = tree.DecisionTreeRegressor(max_depth=3)
+ache_tree_mp4.fit(X_mp4, y_mp4)
 ```
 
 ```{python}
-tree.plot_tree(ache_tree_mp4_1)
+tree.plot_tree(ache_tree_mp4, filled=True, rounded=True)
 ```
 
-```{python}
-tree.plot_tree(ache_tree_mp4_2)
-```
+<br>
+
+###### **Testing data based on max phase of null to 3 compounds**
 
 ```{python}
 # Compounds with max phase other than 4 (null to 3)
@@ -304,16 +287,12 @@ print(dtree_mp_null.shape)
 dtree_mp_null.head() 
 ```
 
-There were 432 compounds with max phase as "null".
-
-TODOs:
-- ?quick EDA on these "null" compounds to see distribution of pKi.
-- random sampling
+There were 466 compounds with max phase as "null".
 
 ```{python}
-# Randomly sample 5 compounds from dtree_mp_null - pandas.DataFrame.sample
-
-
+# Randomly sample 10 compounds from dtree_mp_null
+dtree_mp_null = dtree_mp_null.sample(n=10, random_state=1)
+dtree_mp_null
 ```
 
 ```{python}
@@ -328,25 +307,17 @@ X_mp_test
 ```
 
 ```{python}
-y_1 = ache_tree_mp4_1.predict(X_mp_test)
-y_2 = ache_tree_mp4_2.predict(X_mp_test)
+y_test = ache_tree_mp4.predict(X_mp_test)
 ```
 
 ```{python}
-import matplotlib.pyplot as plt
-
-# plt.figure()
-# plt.scatter(X_mp4, y_mp4, s=20, edgecolors="black", c="darkred", label="data")
-
-# plt.plot(X_mp_test, y_1, color="cornflowerblue", label="max_depth=2", linewidth = 2)
-
-# plt.plot(X_mp_test, y_2, color="yellowgreen", label="max_depth=5", linewidth=2)
-
-# plt.xlabel("data")
-# plt.ylabel("target")
-# plt.title("Decision tree regression for AChE inhibitors from ChEMBL")
-# plt.legend()
-# plt.show()
+ache_tree_mp4.fit(X_mp_test, y_test)
 ```
 
+```{python}
+tree.plot_tree(ache_tree_mp4, filled=True, rounded=True)
+```
+
+
+Note: the lower the Ki (and the lower the IC50), the more potent the inhibitor (compound)
 

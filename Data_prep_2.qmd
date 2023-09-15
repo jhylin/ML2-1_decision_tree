@@ -153,7 +153,7 @@ Also, before jumping straight to compound sanitisation, I needed to check the "d
 dtree_df["data_validity_comment"].unique()
 ```
 
-There were 2 different types of data validity comments here, which were "NaN"  and "Outside typical range" (Note: the only compound that had "Potential transcirption error" as its data validity comment was already filtered out in part 1). So, this meant compounds with comment as "Outside typical range" should be addressed first.
+There were 3 different types of data validity comments here, which were "Potential transcription error", "NaN"  and "Outside typical range". So, this meant compounds with comments as "Potential transcription error" and "Outside typical range" should be addressed first.
 
 ```{python}
 # Find out number of compounds with "outside typical range" as data validity comment
@@ -162,7 +162,16 @@ print(dtree_df_err.shape)
 dtree_df_err.head()
 ```
 
-There were a total of 51 compounds with Ki outside typical range. These compounds with questionable Ki values were removed, as they could be potential sources of errors in ML models later on (error trickling effect). One of the ways to filter out data was to fill the empty cells within the "data_validity_comment" column first, so those ones to be kept could be selected.
+There were a total of 51 compounds with Ki outside typical range. 
+
+```{python}
+dtree_df_err2 = dtree_df[dtree_df["data_validity_comment"] == "Potential transcription error"]
+dtree_df_err2
+```
+
+With the other comment for potential transciption error, there seemed to be only one compound here.
+
+These compounds with questionable Ki values were removed, as they could be potential sources of errors in ML models later on (error trickling effect). One of the ways to filter out data was to fill the empty cells within the "data_validity_comment" column first, so those ones to be kept could be selected.
 
 ```{python}
 # Fill "NaN" entries with an actual name e.g. none
@@ -291,7 +300,7 @@ dtree_san_df.boxplot(column = "pKi")
 #dtree_san_df.plot.box(column = "pKi")
 ```
 
-I also used Pandas' built-in boxplot in addition to the histogram to show the possible outliers within the pKi values. Clearly, the outliers for pKi values appeared to be above 10.5. I also didn't remove these outliers completely due to the dataset itself wasn't quite in a Gaussian distribution (possibly not true outliers).
+I also used Pandas' built-in boxplot in addition to the histogram to show the possible outliers within the pKi values. Clearly, the outliers for pKi values appeared to be above 10. I also didn't remove these outliers completely due to the dataset itself wasn't quite in a Gaussian distribution (possibly not true outliers).
 
 <br>
 
