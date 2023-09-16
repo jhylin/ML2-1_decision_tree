@@ -1,8 +1,8 @@
 ---
 title: "Decision tree"
-subtitle: "Series 2.1 - data pre-processing (part 1)"
+subtitle: "Series 2.1 - data collection and pre-processing (part 1)"
 author: Jennifer HY Lin
-date: '2023-9-11'
+date: '2023-9-15'
 draft: true
 categories: 
     - Machine learning projects
