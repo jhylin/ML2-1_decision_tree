@@ -146,7 +146,11 @@ This definitely helped a lot with visualising the estimated errors for the exper
 
 At this stage, I've planned to do train on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
 
-Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). Max phase 4 meant the compound was an approved and marketed drug (e.g. prescription medicines), and the lower the number, the more likely the compounds were still in different phases of clinical trials or pending to be entered into clinical trials.
+Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). 
+
+As quoted from ChEMBL FAQ link, a max phase of 4 compound means:
+
+> "Approved (4): A marketed drug e.g. AMINOPHYLLINE (CHEMBL1370561) is an FDA approved drug for treatment of asthma."
 
 Checking out the distribution of max phase assignments for all compounds in this collected and pre-processed dataset first. 
 
@@ -169,13 +173,13 @@ Checking out the actual counts of each max phase category.
 dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
 ```
 
-Unfortunately this has reduced the dataset even further if I opted to go for training the model on compounds with max phase of 4 (there were literally only 5!). Because of this, I think I'd build a model using all of these 481 compounds first (that would be already a small sample too, but better than only 5) and see what I would get. This might also hint at using an ensemble of tree models instead (planned for future posts), as it's more accurate and powerful averaging the results from multiple tree models than only from a single tree model.
+Because of the small data available (e.g. amount of max phase of 4 compounds with this particular protein target), this might hint at the ensemble approach with model averaging from a bunch of tree models (planned for future posts) than using a single tree model, which was what I was doing here.
 
 <br>
 
 ##### **Sanity check on dtree df**
 
-Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it.
+Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it (dropping any "NaN" again in the dataframe).
 
 ```{python}
 dtree.dropna()
@@ -187,60 +191,11 @@ dtree.head()
 
 ##### **Model building**
 
-*sample only for full dataset of 481 compounds - note: no training/testing data splits*
-
-Setting up decision tree model using scikit-learn's tree.DecisionTreeRegressor().
-
-```{python}
-dtree.columns
-```
-
-```{python}
-# Define features/predictors
-X = dtree[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
-
-X
-```
-
-```{python}
-# Define target/outcome
-y = dtree['pKi']
-y
-```
-
-```{python}
-# Convert X (features/predictors) to numpy array
-X = X.to_numpy()
-
-# Convert y (outcome/target)
-y = y.to_numpy()
-```
-
-```{python}
-# Check X is now an array
-X
-```
-
-```{python}
-y
-```
-
-```{python}
-# May need to reduce max_depth
-ache_tree = tree.DecisionTreeRegressor(max_depth=3).fit(X, y)
-```
-
-```{python}
-tree.plot_tree(ache_tree, filled=True, rounded=True)
-```
-
-<br>
-
 ###### **Training data based on max phase of 4 compounds**
 
-I did a test-run on fitting a decision tree on the full dataset of 481 compounds. However, there were no training and testing data splits, so potentially the result might be not that useful. So here I wanted to split the collected data by splitting the compounds into two groups based on their assigned max phases. Compounds with max phase of 4 would be the training data, and the rest of the compounds with max phases of null to 3 would be the testing data.
+So here I wanted to separate the collected data by splitting the compounds into two groups based on their assigned max phases. Compounds with max phase of 4 would be the training data, and the rest of the compounds with max phases of "null" would be the testing data.
 
-Fitting the DecisionTreeRegressor() for compounds with max phase of 4 as shown below, which should really be only 10 compounds in total (including donepezil and galantamine).
+Fitting the DecisionTreeRegressor() for compounds with max phase of 4 as shown below, which should really be only 10 compounds in total (included donepezil and galantamine).
 
 ```{python}
 # Create a df for compounds with max phase of 4
@@ -266,10 +221,14 @@ y_mp4 = y_mp4_df.to_numpy()
 y_mp4
 ```
 
+Keeping tree depth at 3 for now.
+
 ```{python}
 ache_tree_mp4 = tree.DecisionTreeRegressor(max_depth=3)
 ache_tree_mp4 = ache_tree_mp4.fit(X_mp4, y_mp4)
 ```
+
+A decision tree plot based on *scikit-learn's* plot_tree().
 
 ```{python}
 tree.plot_tree(ache_tree_mp4, feature_names=list(X_mp4_df.columns), filled=True, rounded=True)
@@ -284,19 +243,18 @@ text = export_text(ache_tree_mp4, feature_names=list(X_mp4_df.columns))
 print(text)
 ```
 
+The graphviz version, which showed a small variation in graph presentation, and seemed to be much larger in size and easier to view.
+
 ```{python}
-# >>> dot_data = tree.export_graphviz(clf, out_file=None, 
-# ...                      feature_names=iris.feature_names,  
-# ...                      class_names=iris.target_names,  
-# ...                      filled=True, rounded=True,  
-# ...                      special_characters=True)  
-# >>> graph = graphviz.Source(dot_data)  
-# >>> graph
+import graphviz
 
+dot_data = tree.export_graphviz(ache_tree_mp4, out_file=None, feature_names=list(X_mp4_df.columns), filled=True, rounded=True, special_characters=False)
 
-
-
+graph = graphviz.Source(dot_data)
+graph
 ```
+
+The following was a dtreeviz version of the decision tree, which actually included the actual regression plots of different molecular features e.g. clogp, n_aromatic rings and n_aliphatic_rings versus the target value of pKi. It seemed a bit more intuitive as these plots clearly showed where the feature threshold cut-offs, i.e. where the branches would grow.
 
 GitHub repo link - https://github.com/parrt/dtreeviz
 
@@ -312,8 +270,7 @@ viz.view()
 ###### **Testing data based on max phase of null to 3 compounds**
 
 ```{python}
-# Compounds with max phase other than 4 (null to 3)
-# X_test
+# Compounds with max phase as "null"
 dtree_mp_null = dtree[dtree["max_phase"] == "null"]
 print(dtree_mp_null.shape)
 dtree_mp_null.head() 
@@ -321,20 +278,22 @@ dtree_mp_null.head()
 
 There were 466 compounds with max phase as "null", meaning they were pre-clinical compounds.
 
+*Then I randomly chose 10 compounds from this "null" dataframe - might not need to do this, predicted on all the "null" compounds in the collected data to see the likely outcome of pKi.*
+
 ```{python}
 # Randomly sample 10 compounds from dtree_mp_null
-dtree_mp_null = dtree_mp_null.sample(n=10, random_state=1)
-dtree_mp_null
+# dtree_mp_null = dtree_mp_null.sample(n=10, random_state=1)
+# dtree_mp_null
 ```
 
 ```{python}
-X_mp_test = dtree_mp_null[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
-X_mp_test
+X_mp_test_df = dtree_mp_null[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
+X_mp_test_df
 ```
 
 ```{python}
 # Convert dtree_mp to numpy array
-X_mp_test = X_mp_test.to_numpy()
+X_mp_test = X_mp_test_df.to_numpy()
 X_mp_test
 ```
 
@@ -343,13 +302,42 @@ y_test = ache_tree_mp4.predict(X_mp_test)
 ```
 
 ```{python}
-ache_tree_mp4.fit(X_mp_test, y_test)
+ache_tree_mp4 = ache_tree_mp4.fit(X_mp_test, y_test)
 ```
+
+Using the graphviz graph version to show the decision tree on the testing set, as the prediction result.
 
 ```{python}
-tree.plot_tree(ache_tree_mp4, filled=True, rounded=True)
+dot_data = tree.export_graphviz(ache_tree_mp4, out_file=None, feature_names=list(X_mp_test_df.columns), filled=True, rounded=True, special_characters=False)
+
+graph = graphviz.Source(dot_data)
+graph
 ```
 
+Note: the lower the Ki, the more potent the inhibitor (compound) - Cheng-Prusoff equation
 
-Note: the lower the Ki (and the lower the IC50), the more potent the inhibitor (compound)
+<br>
+
+##### **Discussions**
+
+As quoted from ChEMBL FAQ link, a max phase of "null" compound means:
+
+> "Preclinical (NULL): preclinical compounds with bioactivity data e.g. is a
+preclinical compound with bioactivity data that has been extracted from scientific
+literature. However, the sources of drug and clinical candidate drug information in
+ChEMBL do not show that this compound has reached clinical trials and therefore the
+max_phase is set to null."
+
+As described in the subsection of "Estimate experimental errors", there were experimental errors of 3-fold, 5-fold and 10-fold estimated based on the provided pKi data. With the prediction model used in this last part, this would need to be taken into consideration. 
+
+One of the ways to check would be to re-run the dataframe again on compounds with max phase as null using the molecular feature names to find out the compounds at specified threshold cut-off value to see if their pKi values would fall in the predicted ranges. The other possible way was to actually calculate the prediction interval of the prediction model (?use Jackknife+ in MAPIE package - check this could be apply to tree models?).
+
+The best way would be to test these compounds in the same experimental set-ups, through same experimental steps, and in the same laboratory to find out their respective pKi values. However, this was most likely not very feasible due to various real-life restrictions. The likely final decision would be to choose compound candidates with the highest possibilities to proceed forward in the drug discovery pipeline.
+
+
+<br>
+
+##### **Final words**
+
+I didn't think a definite conclusion could be drawn here, as this was only purely the outcome from one single decision tree. So I have named this last part as final words, as I felt if I didn't stop here, this post could go on forever or as long as I'd want to (which could be unnecessarily convoluted to me and any readers of this series). The main thing here for me was to fully understand how one single decision tree was constructed based on hopefully reasonable-ish data (still not the best I reckon), and then to view the tree visually in different styles of plots, and understand how this was a white-box ML approach with clear descriptions about how the tree would branch off to which nodes to reach different outcomes or targets. The more important thing was that this was like a preamble before the multiple-tree models e.g. random forest, and boosted trees further down the line (I did plan to do a series of posts on tree models, now that might take a while...).
 
