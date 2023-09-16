@@ -2,7 +2,7 @@
 title: "Decision tree"
 subtitle: "Series 2.1 - model building"
 author: Jennifer HY Lin
-date: '2023-9-15'
+date: '2023-9-16'
 draft: true
 categories: 
     - Machine learning projects
@@ -33,7 +33,7 @@ import numpy as np
 from sklearn.metrics import r2_score
 import seaborn as sns
 from sklearn import tree
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 ```
 
 Imported the pre-processed data from previous posts.
@@ -250,29 +250,61 @@ dtree_mp4
 
 ```{python}
 # Set X (features) for max phase 4 compounds
-X_mp4 = dtree_mp4[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
+X_mp4_df = dtree_mp4[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
 
 # Convert X_mp4 to numpy array
-X_mp4 = X_mp4.to_numpy()
+X_mp4 = X_mp4_df.to_numpy()
 X_mp4
 ```
 
 ```{python}
 # Set y (target) for max phase 4 compounds
-y_mp4 = dtree_mp4["pKi"]
+y_mp4_df = dtree_mp4["pKi"]
 
 # Convert y_mp4 to numpy array
-y_mp4 = y_mp4.to_numpy()
+y_mp4 = y_mp4_df.to_numpy()
 y_mp4
 ```
 
 ```{python}
 ache_tree_mp4 = tree.DecisionTreeRegressor(max_depth=3)
-ache_tree_mp4.fit(X_mp4, y_mp4)
+ache_tree_mp4 = ache_tree_mp4.fit(X_mp4, y_mp4)
 ```
 
 ```{python}
-tree.plot_tree(ache_tree_mp4, filled=True, rounded=True)
+tree.plot_tree(ache_tree_mp4, feature_names=list(X_mp4_df.columns), filled=True, rounded=True)
+```
+
+Decision tree in text form.
+
+```{python}
+from sklearn.tree import export_text
+
+text = export_text(ache_tree_mp4, feature_names=list(X_mp4_df.columns))
+print(text)
+```
+
+```{python}
+# >>> dot_data = tree.export_graphviz(clf, out_file=None, 
+# ...                      feature_names=iris.feature_names,  
+# ...                      class_names=iris.target_names,  
+# ...                      filled=True, rounded=True,  
+# ...                      special_characters=True)  
+# >>> graph = graphviz.Source(dot_data)  
+# >>> graph
+
+
+
+
+```
+
+GitHub repo link - https://github.com/parrt/dtreeviz
+
+```{python}
+import dtreeviz 
+
+viz = dtreeviz.model(ache_tree_mp4, X_train=X_mp4, y_train=y_mp4, target_name="pKi", feature_names=list(X_mp4_df.columns))
+viz.view()
 ```
 
 <br>
