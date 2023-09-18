@@ -1,8 +1,8 @@
 ---
 title: "Decision tree"
-subtitle: "Series 2.1 - model building"
+subtitle: "Series 2.1 - model building and estimating experimental errors"
 author: Jennifer HY Lin
-date: '2023-9-16'
+date: '2023-9-18'
 draft: true
 categories: 
     - Machine learning projects
@@ -15,17 +15,29 @@ format: html
 bibliography: references.bib
 ---
 
+##### **Data source**
+
+The data used here was extracted from ChEMBL database by using ChEMBL webresource client in Python. The details of all the steps taken to reach the final .csv file could be seen in these earlier **posts** (yes, it took quite a while to clean the data, so it was splitted into two posts).
+
+-   The final .csv file used to train the model was named, "ache_2d_chembl.csv"
+
+-   The earlier version without any RDKit 2D descriptors calculated was named, "ache_chembl.csv"
+
+-   Both files should be in a GitHub repository called, "[ML2-1_decision_tree](https://github.com/jhylin/ML2-1_decision_tree)" or in my [blog repository](https://github.com/jhylin/Data_in_life_blog), under "posts" folder (look for "16_ML2-1_Decision_tree" folder)
+
+<br>
+
 ##### **Estimate experimental errors**
 
-This part was about estimating the impact of experimental errors (pKi values) on the predictive machine learning (ML) models. It was also needed to estimate the maximum possible correlation that could be drawn from the dataset used and pre-processed from the previous two posts. 
+This part was about estimating the impact of experimental errors (pKi values) on the predictive machine learning (ML) models. It was also needed to estimate the maximum possible correlation that could be drawn from the dataset prepared from the previous two posts. I supposed it made more sense if this was done prior to building the ML model, so this wouldn't be forgotten or missed, as we knew that real-life was full of many imperfections.
 
-This subsection was highly inspired by Pat Walters' posts, which have discussed about estimating errors for experimental data with code links available in these posts:
+This subsection was inspired by Pat Walters' posts, which have discussed about estimating errors for experimental data with code links available in these posts:
 
-- [How Good Could (Should) My Models Be?](http://practicalcheminformatics.blogspot.com/2019/07/how-good-could-should-my-models-be.html) - a reference paper [@Brown2009] was mentioned as the simulation basis for estimating the impact of experimental errors on the correlation from a predictive ML model
+-   [How Good Could (Should) My Models Be?](http://practicalcheminformatics.blogspot.com/2019/07/how-good-could-should-my-models-be.html) - a reference paper [@Brown2009] was mentioned as the simulation basis for estimating the impact of experimental errors on the correlation from a predictive ML model
 
-- [Getting Real with Molecular Property Prediction](http://practicalcheminformatics.blogspot.com/2023/06/getting-real-with-molecular-property.html) (under subsection of "How Well Should We Be Able to Model the Data?")
+-   [Getting Real with Molecular Property Prediction](http://practicalcheminformatics.blogspot.com/2023/06/getting-real-with-molecular-property.html) (under subsection of "How Well Should We Be Able to Model the Data?")
 
-To get started, all the required libraries were loaded as below. 
+To get started, all the required libraries were loaded as below.
 
 ```{python}
 import pandas as pd
@@ -33,10 +45,9 @@ import numpy as np
 from sklearn.metrics import r2_score
 import seaborn as sns
 from sklearn import tree
-#from matplotlib import pyplot as plt
 ```
 
-Imported the pre-processed data from previous posts.
+Imported the preprocessed data from previous posts.
 
 ```{python}
 # Import data
@@ -138,48 +149,38 @@ vplot = sns.violinplot(x = "fold_error", y = "r2", data = err_df)
 vplot.set(xlabel = "Fold error", ylabel = "R$^2$")
 ```
 
-This definitely helped a lot with visualising the estimated errors for the experimental Ki values curated in ChEMBL for this specific protein target (CHEMBL220, acetylcholinesterase). The larger the error-fold, the lower the R^2^, and once the experimental error reached 10-fold, we could see an estimated R^2^ (maximum correlation) with its median sitting below 0.55, indicating a likely poor predictive ML model if it was built based on these data with the estimated experimental errors.
+This definitely helped a lot with visualising the estimated errors for the experimental Ki values curated in ChEMBL for this specific protein target (CHEMBL220, acetylcholinesterase (AChE)). The larger the error-fold, the lower the R^2^, and once the experimental error reached 10-fold, we could see an estimated R^2^ (maximum correlation) with its median sitting below 0.55, indicating a likely poor predictive ML model if it was built based on these data with the estimated 10-fold experimental errors.
 
 <br>
 
 ##### **Check max phase distribution**
 
-At this stage, I've planned to do train on compounds with max phase of 4 (i.e. they were usually prescription medicines used in real-life, but I had a feeling this might further reduce the sample size even further).
+At this stage, I've planned to do model training on compounds with max phase 4 (i.e. prescription medicines), so this would somewhat be an attempt to mirror real-life scenarios for the ML prediction model.
 
-Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). 
-
-As quoted from ChEMBL FAQ link, a max phase of 4 compound means:
+Max phases were assigned to each ChEMBL-curated compound according to this [ChEMBL FAQ link](https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/drug-and-compound-questions) (under the question of "What is max phase?"). As quoted from this ChEMBL FAQ link, a max phase 4 compound means:
 
 > "Approved (4): A marketed drug e.g. AMINOPHYLLINE (CHEMBL1370561) is an FDA approved drug for treatment of asthma."
 
-Checking out the distribution of max phase assignments for all compounds in this collected and pre-processed dataset first. 
+Checking out the actual counts of each max phase group in the dataset.
 
 ```{python}
-dtree["max_phase"].describe()
+dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
 ```
 
-It was actually a very small number of compounds that were assigned with a number for max phase (total count of 10, which was unsurprising as there weren't many acetylcholinesterase inhibitors being used as prescription medications for dementia, with some well-known examples such as donepezil, galantamine and rivastigmine).
+There was only a very small number of compounds with max phase 4 assigned (a total count of 10, which was also unsurprising since there weren't many AChE inhibitors used as prescription medications for dementia - some of the well-known examples were donepezil, galantamine and rivastigmine).
 
-Filling in actual "null" labels for all "NaN" rows in the "max_phase" columns.
+Filling in actual "null" labels for all "NaN" rows in the "max_phase" columns to help with filtering out these compounds later on.
 
 ```{python}
 dtree["max_phase"].fillna("null", inplace=True)
 dtree.head()
 ```
 
-Checking out the actual counts of each max phase category.
-
-```{python}
-dtree[["molecule_chembl_id", "max_phase"]].groupby("max_phase").count()
-```
-
-Because of the small data available (e.g. amount of max phase of 4 compounds with this particular protein target), this might hint at the ensemble approach with model averaging from a bunch of tree models (planned for future posts) than using a single tree model, which was what I was doing here.
-
 <br>
 
-##### **Sanity check on dtree df**
+##### **Sanity check on the dataframe**
 
-Another sanity check on dtree dataframe - making sure there weren't any "NaN" cells in it (dropping any "NaN" again in the dataframe).
+This was just another sanity check for myself on the dtree dataframe - making sure there weren't any "NaN" cells in it (so dropping any "NaN" again, even though I might have already done this as one of the steps during data preprocessing).
 
 ```{python}
 dtree.dropna()
@@ -191,50 +192,67 @@ dtree.head()
 
 ##### **Model building**
 
-###### **Training data based on max phase of 4 compounds**
+###### **Training data based on max phase 4 compounds**
 
-So here I wanted to separate the collected data by splitting the compounds into two groups based on their assigned max phases. Compounds with max phase of 4 would be the training data, and the rest of the compounds with max phases of "null" would be the testing data.
-
-Fitting the DecisionTreeRegressor() for compounds with max phase of 4 as shown below, which should really be only 10 compounds in total (included donepezil and galantamine).
+So here I wanted to separate the collected data by splitting the compounds into two groups based on their assigned max phases. Compounds with max phase 4 were chosen as the training data, and the rest of the compounds with max phases of "null" would be the testing data.
 
 ```{python}
-# Create a df for compounds with max phase of 4
+# Create a df for compounds with max phase 4 only
 dtree_mp4 = dtree[dtree["max_phase"] == 4]
 dtree_mp4
 ```
+
+Making sure donepezil and galantamine were in this dtree_mp4 dataframe, so the model training would be based on these medicines and also other max phase 4 AChE inhibitors.
+
+The screenshots of both medicines were taken from ChEMBL website:
+
+![Screenshot of donepezil (parent drug form) with its molecule ChEMBL ID](donepezil_chembl.png)
+
+![Screenshot of galantamine (parent drug form) with its molecule ChEMBL ID](galantamine_chembl.png)
+
+The following regex string check confirmed that these two compounds were in the dtree_mp4 dataframe - row indices 9 and 171 contained these two drugs.
+
+```{python}
+list_ache_inh = ["CHEMBL502", "CHEMBL659"]
+dtree_mp4["molecule_chembl_id"].str.contains(r"|".join(list_ache_inh))
+```
+
+Setting up the features for the training set.
 
 ```{python}
 # Set X (features) for max phase 4 compounds
 X_mp4_df = dtree_mp4[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
 
-# Convert X_mp4 to numpy array
+# Convert X_mp4_df to numpy array
 X_mp4 = X_mp4_df.to_numpy()
 X_mp4
 ```
+
+Setting up the target for the training set.
 
 ```{python}
 # Set y (target) for max phase 4 compounds
 y_mp4_df = dtree_mp4["pKi"]
 
-# Convert y_mp4 to numpy array
+# Convert y_mp4_df to numpy array
 y_mp4 = y_mp4_df.to_numpy()
 y_mp4
 ```
 
-Keeping tree depth at 3 for now.
+The DecisionTreeRegressor() was fitted on the compounds with max phase 4 as shown below, keeping tree depth at 3 for now to avoid complicating the overall tree graph (the deeper the tree, the more branches - potentially might overfit and create noises for the model).
 
 ```{python}
 ache_tree_mp4 = tree.DecisionTreeRegressor(max_depth=3)
 ache_tree_mp4 = ache_tree_mp4.fit(X_mp4, y_mp4)
 ```
 
-A decision tree plot based on *scikit-learn's* plot_tree().
+A simple decision tree plot based on *scikit-learn's* plot_tree() was shown below.
 
 ```{python}
 tree.plot_tree(ache_tree_mp4, feature_names=list(X_mp4_df.columns), filled=True, rounded=True)
 ```
 
-Decision tree in text form.
+It could also be in the text form.
 
 ```{python}
 from sklearn.tree import export_text
@@ -243,7 +261,7 @@ text = export_text(ache_tree_mp4, feature_names=list(X_mp4_df.columns))
 print(text)
 ```
 
-The graphviz version, which showed a small variation in graph presentation, and seemed to be much larger in size and easier to view.
+The graphviz version, which showed a small variation in graph presentation, seemed to be much larger in size and easier to view.
 
 ```{python}
 import graphviz
@@ -254,9 +272,9 @@ graph = graphviz.Source(dot_data)
 graph
 ```
 
-The following was a dtreeviz version of the decision tree, which actually included the actual regression plots of different molecular features e.g. clogp, n_aromatic rings and n_aliphatic_rings versus the target value of pKi. It seemed a bit more intuitive as these plots clearly showed where the feature threshold cut-offs, i.e. where the branches would grow.
+The following was a dtreeviz version of the decision tree, which actually included the regression plots of different molecular features e.g. clogp, n_aromatic rings and n_aliphatic_rings versus the target value of pKi. It seemed a bit more intuitive as these plots clearly showed where the threshold cut-offs would be for each feature (molecular descriptors). The GitHub repository link for dtreeviz could be accessed [here](https://github.com/parrt/dtreeviz).
 
-GitHub repo link - https://github.com/parrt/dtreeviz
+*Note: it might be smaller in size and not as clear as the graphviz version in the published version of the post, but if the code was run in any IDE, it should be larger to view, and potentailly could be saved as a PDF file*
 
 ```{python}
 import dtreeviz 
@@ -267,7 +285,7 @@ viz.view()
 
 <br>
 
-###### **Testing data based on max phase of null to 3 compounds**
+###### **Testing and predicting data based on max phase of null compounds**
 
 ```{python}
 # Compounds with max phase as "null"
@@ -276,30 +294,27 @@ print(dtree_mp_null.shape)
 dtree_mp_null.head() 
 ```
 
-There were 466 compounds with max phase as "null", meaning they were pre-clinical compounds.
+There were 466 compounds with max phase as "null", meaning they were pre-clinical compounds. This was confirmed through the answer from ChEMBL FAQ link, a max phase of "null" compound means:
 
-*Then I randomly chose 10 compounds from this "null" dataframe - might not need to do this, predicted on all the "null" compounds in the collected data to see the likely outcome of pKi.*
+> "Preclinical (NULL): preclinical compounds with bioactivity data e.g. is a preclinical compound with bioactivity data that has been extracted from scientific literature. However, the sources of drug and clinical candidate drug information in ChEMBL do not show that this compound has reached clinical trials and therefore the max_phase is set to null."
 
-```{python}
-# Randomly sample 10 compounds from dtree_mp_null
-# dtree_mp_null = dtree_mp_null.sample(n=10, random_state=1)
-# dtree_mp_null
-```
+Again, setting up the features for the testing dataset.
 
 ```{python}
 X_mp_test_df = dtree_mp_null[['mw', 'fsp3', 'n_lipinski_hba', 'n_lipinski_hbd', 'n_rings', 'n_hetero_atoms', 'n_heavy_atoms', 'n_rotatable_bonds', 'n_radical_electrons', 'tpsa', 'qed', 'clogp', 'sas', 'n_aliphatic_carbocycles', 'n_aliphatic_heterocyles', 'n_aliphatic_rings', 'n_aromatic_carbocycles', 'n_aromatic_heterocyles', 'n_aromatic_rings', 'n_saturated_carbocycles', 'n_saturated_heterocyles', 'n_saturated_rings']]
-X_mp_test_df
-```
 
-```{python}
-# Convert dtree_mp to numpy array
+# Convert X_mp_test_df to numpy array
 X_mp_test = X_mp_test_df.to_numpy()
 X_mp_test
 ```
 
+Then setting up the target for the testing set.
+
 ```{python}
 y_test = ache_tree_mp4.predict(X_mp_test)
 ```
+
+The trained model, ache_tree_mp4, was used to predict on the testing dataset (max phase of null compounds).
 
 ```{python}
 ache_tree_mp4 = ache_tree_mp4.fit(X_mp_test, y_test)
@@ -314,30 +329,36 @@ graph = graphviz.Source(dot_data)
 graph
 ```
 
-Note: the lower the Ki, the more potent the inhibitor (compound) - Cheng-Prusoff equation
-
 <br>
 
 ##### **Discussions**
 
-As quoted from ChEMBL FAQ link, a max phase of "null" compound means:
+Because of the small amount of training data, this might hint at using an ensemble approach in the future (which was actually planned as my future posts), where model averaging would be derived from a bunch of tree models rather than using a single tree model, which was what I did here. The reason I started with one tree was because it was no point in building a multiple-tree model if one had no clue about how one tree was built. To learn as much as possible, I had to dissect the multiple-tree version first to focus on one tree at a time.
 
-> "Preclinical (NULL): preclinical compounds with bioactivity data e.g. is a
-preclinical compound with bioactivity data that has been extracted from scientific
-literature. However, the sources of drug and clinical candidate drug information in
-ChEMBL do not show that this compound has reached clinical trials and therefore the
-max_phase is set to null."
+One thing I'd like to mention was that rivastigmine was not included in the training dataset because it was actually not a pure AChE inhibitor (as it was also a butyrylcholinesterase (BChE) inhibitor), since my focus was purely on AChE at this time, this particular drug was unfortunately excluded. However, I did make sure the other two drugs mentioned previously (donepezil and galantamine) were included in the training dataset. One possible thing to do in the future if I want to improve this was to add BChE as another protein target and perhaps add this as an additional dataset towards the model.
 
-As described in the subsection of "Estimate experimental errors", there were experimental errors of 3-fold, 5-fold and 10-fold estimated based on the provided pKi data. With the prediction model used in this last part, this would need to be taken into consideration. 
+As described in the subsection of "Estimate experimental errors", there were experimental errors of 3-fold, 5-fold and 10-fold estimated based on the provided pKi data. With the prediction model used in this post, the estimated experimental errors would need to be taken into consideration, particularly at the time when the model was being investigated during the model evaluation and validation step (however due to the length of series 2.1 posts, I decided not to add this step yet, but would try to look at this later in the multiple tree model series if this applies).
 
-One of the ways to check would be to re-run the dataframe again on compounds with max phase as null using the molecular feature names to find out the compounds at specified threshold cut-off value to see if their pKi values would fall in the predicted ranges. The other possible way was to actually calculate the prediction interval of the prediction model (?use Jackknife+ in MAPIE package - check this could be apply to tree models?).
+A bit about the last decision tree plot, tentatively clogp (calculated partition coefficient) might be the crucial molecular feature in deciding whether a molecule might be closer to being an AChE inhibitor. Other important features also included the number of aromatic rings, number of heavy atoms and molecular weights.
 
-The best way would be to test these compounds in the same experimental set-ups, through same experimental steps, and in the same laboratory to find out their respective pKi values. However, this was most likely not very feasible due to various real-life restrictions. The likely final decision would be to choose compound candidates with the highest possibilities to proceed forward in the drug discovery pipeline.
+Since the type of AChE inhibitors was not the focus of this series, I won't go into details about which value of pKi or Ki would lead to the ideal AChE inhibitor (the well-known Cheng-Prusoff equation [@Cheng1973] might also lead to many discussions about Ki and IC50 values). This is because there are at least two types of AChE inhibitors available - reversible and irreversible [@Colovic2013]. Donepezil, galantamine and rivastigmine mentioned previously are the commonly known reversible AChE inhibitors. The irreversible type, as the name suggested, is usually used as insecticides or nerve agents. Another reason is that I didn't go into details checking all of the identities for the 10 max phase 4 compounds used in the training set, as I only really made sure that donepezil and galantamine were included in the 10 molecules. If I were to re-model again purely on reversible AChE inhibitors targeting dementia or Alzheirmer's disease, I think I had to be quite sure of what I was training the model with, i.e. excluding irreversible AChE inhibitors from the training set.
 
+However, if our aim was to only find novel AChE inhibitors in a general manner, one of the ways to check post-model building would be to re-run the dataframe again on compounds with max phase as null, including the molecular feature names to find out which compounds were at the predicted threshold cut-off values to see if their corresponding pKi values would match the predicted ones. One caveat of this method was that there might be pre-existing experimental errors in all the obtained and recorded Ki values, so this might not confirm that the model was truly a good reflection of the real-life scenario. Therefore, at most, this would probably add a small value during the model evaluation phase.
+
+The best way would be to test all of these compounds in the same experimental set-ups, through same experimental steps, and in the same laboratory to find out their respective Ki (or pKi) values. However, this was most likely not very feasible due to various real-life restrictions (the availability of financial and staffing resources). The most likely outcome might be to choose a selected group of compound candidates with the highest possibilities to proceed in the drug discovery pipeline based on past experimental, ML and clinical experiences, and then test them in the ways mentioned here.
+
+I also came across a [blog post](https://www.valencekjell.com/posts/2022-09-14-prediction-intervals/) about calculating the prediction intervals of ML prediction models (which mentioned the [MAPIE package](https://github.com/scikit-learn-contrib/MAPIE)), but I didn't quite get time yet to look into this package yet, but from I have read in its repository link, it potentially could be quite useful for classification, regression and time-series models during the model evaluation step.
 
 <br>
 
 ##### **Final words**
 
-I didn't think a definite conclusion could be drawn here, as this was only purely the outcome from one single decision tree. So I have named this last part as final words, as I felt if I didn't stop here, this post could go on forever or as long as I'd want to (which could be unnecessarily convoluted to me and any readers of this series). The main thing here for me was to fully understand how one single decision tree was constructed based on hopefully reasonable-ish data (still not the best I reckon), and then to view the tree visually in different styles of plots, and understand how this was a white-box ML approach with clear descriptions about how the tree would branch off to which nodes to reach different outcomes or targets. The more important thing was that this was like a preamble before the multiple-tree models e.g. random forest, and boosted trees further down the line (I did plan to do a series of posts on tree models, now that might take a while...).
+I didn't think a definite conclusion could be drawn here, as this was only purely from one single decision tree, so I have named this last part as "final words", as I felt if I didn't stop here, this post or series 2.1 could go on forever or as long it could go. The main thing here was to fully understand how one single decision tree was constructed based on hopefully reasonable-ish data (still not the best I reckon as I could not rule out all the noises from the data), and then to view the tree visually in different styles of plots, and understand how this was a white-box ML approach with clear features or descriptions shown to trace where the tree would branch off to which nodes to reach different final outcomes or targets.
 
+The most important thing was that this series was really a preamble before the multiple-tree models e.g. random forest and boosted trees, as I have bravely planned to do a series of posts on tree models, so that might take a while, slowly but hopefully surely.
+
+<br>
+
+##### **Acknowledgements**
+
+I'd like to thank all the authors of the open-source packages used in this series 2.1 posts. I'd also like to thank all the authors of all the blog posts mentioned in this series as well as I've learnt a lot from them too.
