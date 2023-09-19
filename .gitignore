@@ -6,10 +6,13 @@ Data_prep_1_files
 Data_prep_2_files
 Data_prep_1.html
 Data_prep_2.html
+Data_prep_1.qmd
+Data_prep_2.qmd
 plot_iris_dtc.ipynb
 plot_tree_regression.ipynb
 maximum_correlation.ipynb
 preprocess_data.ipynb
 Model_build_files
 Model_build.html
+Model_build.qmd
 .vdoc.py
