@@ -9,6 +9,8 @@ categories:
     - Tree models
     - Data preprocessing
     - Pandas
+    - RDKit
+    - Datamol
     - ChEMBL database
     - Python
 jupyter: python3
