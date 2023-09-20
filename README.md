@@ -1,6 +1,16 @@
 #### **Machine learning series 2.1 - Decision tree**
 
-Machine learning (ML) series 2 will be largely about tree models, which encompass decision tree, random forest, XGBoost and LightGBM. I'm planning to have deeper dives into using each of these tree models on drug discovery data from ChEMBL database (as allowed by my current hardware set-ups). This repository will hold most of the data and files used in my current ML series 2.1 working towards building a decision tree model. The final presentation format will be a blog post with URL link to be provided once completed.
+Machine learning (ML) series 2 will be largely about tree models, which encompass decision tree, random forest, XGBoost and LightGBM. I'm planning to have deeper dives into using each of these tree models on drug discovery data from ChEMBL database (as allowed by my current hardware set-ups). This repository will hold most of the data and files used in ML series 2.1 working towards building a decision tree model, and I'll try to set up separate file repositories for different tree models.
+
+All the code used in series 2.1 was run in Python 3.9 venv. This series was completed with 3 posts in total with links provided below:
+
+[Post 1](https://jhylin.github.io/Data_in_life_blog/posts/16_ML2-1_Decision_tree/1_data_col_prep.html) - data collection from ChEMBL database using web resource client in Python, with initial data preprocessing
+
+[Post 2](https://jhylin.github.io/Data_in_life_blog/posts/16_ML2-1_Decision_tree/2_data_prep_tran.html) - more data preprocessing and transformation to reach the final dataset prior to model building
+
+[Post 3](https://jhylin.github.io/Data_in_life_blog/posts/16_ML2-1_Decision_tree/3_model_build.html) - estimating experimental errors and building decision tree model using scikit-learn
+
+Other way to access above posts is directly through my [blog](https://jhylin.github.io/Data_in_life_blog/).
 
 ---
 
