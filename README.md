@@ -1,8 +1,8 @@
 #### **Machine learning series 2.1 - Decision tree**
 
-Machine learning (ML) series 2 will be largely about tree models, which encompass decision tree, random forest, XGBoost and LightGBM. I'm planning to have deeper dives into using each of these tree models on drug discovery data from ChEMBL database (as allowed by my current hardware set-ups). I'll also attempt to save different tree models in different repositories as I work on them later.
+Machine learning (ML) series 2 will be largely about tree models, which encompass decision tree, random forest and boosted trees. I'm planning to have deeper dives into using each of these tree models on drug discovery data from ChEMBL database. I'll also attempt to save different tree models in different repositories as I work on them later.
 
-This repository will hold most of the data and files used in ML series 2.1 for building a decision tree model. All the code used here was run in Python 3.9 venv and available in .ipynb or .qmd files depending on preferences.
+This repository will hold most of the data and files used in ML series 2.1 for building a decision tree model. All the code used here was run in Python 3.9 venv and available in .ipynb or .qmd files depending on the preferences.
 
 This series was presented as 3 posts with links provided below:
 
