@@ -14,18 +14,3 @@ This series was presented as 3 posts with links provided below:
 
 Other way to access above posts is directly through my [blog](https://jhylin.github.io/Data_in_life_blog/).
 
----
-
-#### **ML series 1 - Logistic regression**
-
-Rather than placing all the work done for ML series 1 in another repository, I thought I'll leave them below as links (since they were done a while back with a large .csv file downloaded via ChEMBL webpage that I could not fit onto the free GitHub repository, this problem is likely avoided in series 2 when using the ChEMBL web resource client).
-
-Posts: 
-* [ML1.1 - data preparation](https://jhylin.github.io/Data_in_life_blog/posts/08_ML1-1_Small_molecules_in_ChEMBL_database/ML1-1_chembl_cpds.html)
-* [ML1.2 - cross-validation and hyperparameter tuning](https://jhylin.github.io/Data_in_life_blog/posts/10_ML1-2_Small_molecules_in_ChEMBL_database/ML1-2_chembl_cpds.html)
-* [ML1.3 - re-training and re-evaluating model](https://jhylin.github.io/Data_in_life_blog/posts/11_ML1-3_Small_molecules_in_ChEMBL_database/ML1-3_chembl_cpds.html)
-
-Code: 
-* [ML1.1 - data preparation](https://github.com/jhylin/Data_in_life_blog/blob/main/posts/08_ML1-1_Small_molecules_in_ChEMBL_database/ML1-1_chembl_cpds.qmd) 
-* [ML1.2 - cross-validation and hyperparameter tuning](https://github.com/jhylin/Data_in_life_blog/blob/main/posts/10_ML1-2_Small_molecules_in_ChEMBL_database/ML1-2_chembl_cpds.qmd)
-* [ML1.3 - re-training and re-evaluating model](https://github.com/jhylin/Data_in_life_blog/blob/main/posts/11_ML1-3_Small_molecules_in_ChEMBL_database/ML1-3_chembl_cpds.qmd)
